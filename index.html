@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Simple Sheet Blog with Firebase Circles</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 2rem;
+      max-width: 700px;
+      line-height: 1.5;
+      position: relative;
+    }
+    article {
+      margin-bottom: 4rem;
+    }
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 0.2rem;
+    }
+    time {
+      font-size: 0.9rem;
+      color: #666;
+    }
+    #draggable-circle {
+      width: 40px;
+      height: 40px;
+      background-color: #ff5722;
+      border-radius: 50%;
+      position: fixed;
+      top: 100px;
+      left: 100px;
+      cursor: grab;
+      z-index: 1000;
+    }
+    #draggable-circle:active {
+      cursor: grabbing;
+    }
+    /* Style for other users' circles */
+    .other-circle {
+      width: 40px;
+      height: 40px;
+      background-color: #2196f3;
+      border-radius: 50%;
+      position: fixed;
+      pointer-events: none;
+      z-index: 999;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="draggable-circle"></div>
+  <main id="blog">
+    <p>Loading…</p>
+  </main>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+  <script>
+    // Firebase configuration for your project (use the regional database URL)
+    const firebaseConfig = {
+      apiKey: "AIzaSyCkTn4tmo-tzwCR1KuzniDhDTe7R8MNNUo",
+      authDomain: "fff1-74e23.firebaseapp.com",
+      databaseURL: "https://fff1-74e23-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "fff1-74e23",
+      storageBucket: "fff1-74e23.appspot.com",
+      messagingSenderId: "24568244243",
+      appId: "1:24568243:web:419b04ff26b007756877e6",
+      measurementId: "G-572GKMK0S9"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Generate a unique ID for this user session
+    const userId = 'user_' + Math.random().toString(36).substr(2, 9);
+
+    const circle = document.getElementById('draggable-circle');
+
+    // Reference for this user's position in the database
+    const userRef = db.ref('circles/' + userId);
+
+    // References for all circles
+    const circlesRef = db.ref('circles');
+
+    // Store other users' circle elements by their userId
+    const otherCircles = {};
+
+    // Update this user's circle position in Firebase
+    function updateUserPosition(left, top) {
+      userRef.set({ left, top });
+    }
+
+    // Remove this user's circle data on disconnect
+    userRef.onDisconnect().remove();
+
+    // Initialize position
+    let posLeft = circle.offsetLeft;
+    let posTop = circle.offsetTop;
+    updateUserPosition(posLeft, posTop);
+
+    // Dragging logic
+    let isDragging = false;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    circle.addEventListener("mousedown", e => {
+      isDragging = true;
+      offsetX = e.clientX - circle.offsetLeft;
+      offsetY = e.clientY - circle.offsetTop;
+      circle.style.cursor = 'grabbing';
+    });
+
+    let lastUpdate = 0;
+    document.addEventListener("mousemove", e => {
+      if (!isDragging) return;
+
+      // Move the circle immediately for smooth UX
+      posLeft = e.clientX - offsetX;
+      posTop = e.clientY - offsetY;
+      circle.style.left = posLeft + "px";
+      circle.style.top = posTop + "px";
+
+      // Only update Firebase at most once every 100ms
+      const now = Date.now();
+      if (now - lastUpdate >= 100) {
+        lastUpdate = now;
+        updateUserPosition(posLeft, posTop);
+      }
+    });
+
+    document.addEventListener("mouseup", () => {
+      if (isDragging) {
+        isDragging = false;
+        circle.style.cursor = 'grab';
+      }
+    });
+
+    // Listen for changes in the circles data to render other users
+    circlesRef.on('value', snapshot => {
+      const data = snapshot.val() || {};
+
+      // Remove circles for users no longer present
+      Object.keys(otherCircles).forEach(id => {
+        if (!data[id]) {
+          document.body.removeChild(otherCircles[id]);
+          delete otherCircles[id];
+        }
+      });
+
+      // Update or create circles for other users
+      Object.entries(data).forEach(([id, pos]) => {
+        if (id === userId) return; // Skip this user's own circle
+
+        if (!otherCircles[id]) {
+          const otherCircle = document.createElement('div');
+          otherCircle.classList.add('other-circle');
+          // Add smooth transition for left/top
+          otherCircle.style.transition = 'left 0.1s linear, top 0.1s linear';
+          document.body.appendChild(otherCircle);
+          otherCircles[id] = otherCircle;
+        }
+        const c = otherCircles[id];
+        c.style.left = (pos.left || 0) + 'px';
+        c.style.top = (pos.top || 0) + 'px';
+      });
+    });
+
+
+    // --- Existing blog fetching code from Google Sheets ---
+
+    const SHEET_URL =
+      "https://docs.google.com/spreadsheets/d/1St2Nqx9SoFAaOX2Q62aBV69W9RbWx4fRGifG-P_Fh_U/gviz/tq?tqx=out:json";
+
+    fetch(SHEET_URL)
+      .then(res => res.text())
+      .then(text => {
+        const json = JSON.parse(text.substring(47).slice(0, -2));
+        const rows = json.table.rows;
+        const cols = json.table.cols.map(c => c.label);
+
+        const posts = rows
+          .map(row => {
+            const obj = {};
+            row.c.forEach((cell, i) => {
+              obj[cols[i]] = cell ? cell.v : null;
+            });
+            return obj;
+          })
+          .filter(post => post.published === true);
+
+        const container = document.getElementById("blog");
+        container.innerHTML = ""; // remove loading text
+        container.querySelectorAll("article").forEach(a => a.remove());
+
+        posts.forEach(post => {
+          const article = document.createElement("article");
+
+          const title = document.createElement("h1");
+          title.textContent = post.title;
+
+          const date = document.createElement("time");
+          if (post.date) {
+            // Google Sheets dates come as Date(YYYY, M, D)
+            const match = post.date.match(/Date\((\d+),(\d+),(\d+)\)/);
+            if (match) {
+              const [, y, m, d] = match;
+              const jsDate = new Date(Number(y), Number(m), Number(d));
+              date.textContent = jsDate.toISOString().split("T")[0];
+            }
+          }
+
+          const body = document.createElement("p");
+          body.textContent = post.body;
+
+          article.appendChild(title);
+          article.appendChild(date);
+          article.appendChild(body);
+
+          container.appendChild(article);
+        });
+      })
+      .catch(err => {
+        const blog = document.getElementById("blog");
+        blog.innerHTML = "";
+        const errorMsg = document.createElement("p");
+        errorMsg.textContent = "Failed to load posts.";
+        blog.appendChild(errorMsg);
+        console.error(err);
+      });
+  </script>
+
+</body>
+</html>
