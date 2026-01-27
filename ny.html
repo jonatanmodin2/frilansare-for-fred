@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Frilansare För Fred</title>
+  <meta name="description" content="Frilansare För Fred – samtal, projekt och evenemang för att förebygga väpnade konflikter." />
+  <link rel="icon" type="image/png" href="assets/portfolio_favicon.png"/>
+
+
+  <style>
+    a,
+    a:visited,
+    a:hover,
+    a:active {
+      color: inherit;
+      text-decoration: underline;
+    }
+    @font-face {
+      font-family: "PPPangram Sans Rounded Compact";
+      src: local("PPPangramSansRounded-CompactRegular"),
+           url("assets/fonts/PPPangramSansRounded-CompactRegular.woff2") format("woff2"),
+           url("assets/fonts/PPPangramSansRounded-CompactRegular.otf") format("opentype");
+      font-weight: 400; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: "PPPangram Sans Rounded";
+      src: local("PPPangramSansRounded-Bold"),
+           url("assets/fonts/PPPangramSansRounded-Bold.woff2") format("woff2"),
+           url("assets/fonts/PPPangramSansRounded-Bold.otf") format("opentype");
+      font-weight: 700; font-style: normal; font-display: swap;
+    }
+
+    :root {
+      --left-bg: #C5BFFF;
+      --right-bg: #A1EE9A;
+
+      --u: 1vmin;
+      --pad-lg: calc(3 * var(--u));
+      --pad-md: calc(2 * var(--u));
+      --pad-sm: calc(1.2 * var(--u));
+
+      --fs-title: clamp(42px, 6.5vw, 96px);
+      --fs-h2: clamp(28px, 4vw, 56px);
+      --fs-h3: clamp(14px, 1.6vw, 20px);
+      --fs-body: clamp(15px, 1.8vw, 22px);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "PPPangram Sans Rounded Compact", system-ui, sans-serif;
+      background: var(--left-bg);
+      color: #000;
+      line-height: 1.4;
+    }
+
+    .split {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 59fr 41fr;
+    }
+
+    #left {
+      background: var(--left-bg);
+    }
+
+    #right {
+      background: var(--right-bg);
+      overflow-y: auto;
+    }
+
+    .left-wrap,
+    .right-wrap {
+      padding: var(--pad-lg);
+    }
+
+    .left-title {
+      font-family: "PPPangram Sans Rounded", system-ui, sans-serif;
+      font-weight: 700;
+      font-size: var(--fs-title);
+      line-height: 0.9;
+      letter-spacing: -0.05em;
+      margin: 0 0 var(--pad-md);
+      max-width: 100%;
+    }
+
+    .left-manifesto,
+    .right-body {
+      font-size: var(--fs-body);
+      line-height: 1.35;
+      margin: 0 0 var(--pad-md);
+    }
+
+    .left-h3,
+    .right-h3 {
+      font-size: var(--fs-h3);
+      font-weight: 400;
+      margin: var(--pad-md) 0 var(--pad-sm);
+      text-align: center;
+    }
+
+    .right-h2 {
+      font-family: "PPPangram Sans Rounded", system-ui, sans-serif;
+      font-weight: 700;
+      font-size: var(--fs-h2);
+      line-height: 1;
+      margin: 0 0 var(--pad-sm);
+      text-align: center;
+    }
+
+    .left-footer {
+      margin-top: var(--pad-lg);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--pad-md);
+    }
+
+    @media (max-width: 900px) {
+      .split {
+        grid-template-columns: 1fr;
+      }
+
+      .left-footer {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main id="main">
+    <div class="split">
+      <aside id="left">
+        <div class="left-wrap"></div>
+      </aside>
+
+      <section id="right">
+        <div class="right-wrap">
+          <h3 class="right-h3" data-wf="text">KOMMANDE:</h3>
+          <h2 class="right-h2" data-wf="text">samtal med svenska freds generalsekreterare</h2>
+          <h3 class="right-h3" data-wf="text">Måndag 1 September Kl 17:00 <br>Lövholmsgränd 12, Plan Fyra</h3>
+          <div class="ph-image" data-wf="img" aria-label="bildplats" role="img"></div>
+          <h4 class="right-h4 eb-gara-italic" data-wf="text">Foto: Felicia Margineanu</h4>
+          <p class="right-body eb-gara" data-wf="text">
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla.
+          </p>
+
+          <h3 class="right-h3" data-wf="text">TIDIGARE:</h3>
+          <h2 class="right-h2" data-wf="text">paneldiskussion: skiljeförfarande i praktiken</h2>
+          <h3 class="right-h3" data-wf="text">Tisdag 9 September Kl 12:00 <br>Lövholmsgränd 12, Plan Fyra</h3>
+          <div class="ph-image" data-wf="img" aria-label="bildplats" role="img"></div>
+          <h4 class="right-h4 eb-gara-italic" data-wf="text">Foto: Johan Jonasson</h4>
+          <p class="right-body eb-gara" data-wf="text">
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla.
+          </p>
+        </div>
+      </section>
+    </div>
+  </main>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const leftWrap = document.querySelector(".left-wrap");
+  leftWrap.style.border = "2px solid red"; // TEMP: visualize left side
+
+  const info_URL =
+    "https://docs.google.com/spreadsheets/d/1St2Nqx9SoFAaOX2Q62aBV69W9RbWx4fRGifG-P_Fh_U/gviz/tq?tqx=out:json&sheet=info";
+
+  fetch(info_URL)
+    .then(res => res.text())
+    .then(text => {
+      console.log("Raw text from sheet:", text.slice(0,200)); // check first 200 chars
+
+      // Parse JSON safely
+      let json;
+      try {
+        json = JSON.parse(text.substring(47).slice(0, -2));
+        console.log("Parsed JSON:", json);
+      } catch(e) {
+        console.error("JSON parse error:", e);
+        return;
+      }
+
+      const rows = json.table.rows;
+      const cols = json.table.cols.map(c => c.label);
+      if (!rows.length) {
+        console.warn("No rows in sheet");
+        return;
+      }
+
+      const row = rows[0];
+      const info = {};
+      row.c.forEach((cell, i) => info[cols[i]] = cell ? cell.v : "");
+      console.log("Info object:", info);
+
+      leftWrap.innerHTML = "";
+
+      // Helper function to style elements
+      function styleElement(el) {
+        el.style.color = "#000";
+        el.style.position = "relative";
+        el.style.zIndex = "10";
+      }
+
+      // Title
+      if (info.rubrik) {
+        const h1 = document.createElement("h1");
+        h1.className = "left-title";
+        h1.textContent = info.rubrik;
+        styleElement(h1);
+        leftWrap.appendChild(h1);
+      }
+
+      // Paragraphs
+      ["stycke1","stycke2","stycke3","stycke4"].forEach((key,i)=>{
+        if(info[key]){
+          const p = document.createElement("p");
+          p.className = `left-manifesto m${i+1}`;
+          p.textContent = info[key];
+          styleElement(p);
+          leftWrap.appendChild(p);
+        }
+      });
+
+      // Footer
+      const footerColsData = [
+        { title: "HITTA HIT:", key: "hitta hit" },
+        { title: "KONTAKTA OSS:", key: "kontakta oss" },
+        { title: "ENGAGERA DIG:", key: "engagera dig" }
+      ];
+      const footerDiv = document.createElement("div");
+      footerDiv.className = "left-footer";
+      styleElement(footerDiv);
+
+      footerColsData.forEach(col=>{
+        const colDiv = document.createElement("div");
+        colDiv.className="footer-col";
+        styleElement(colDiv);
+
+        const h3 = document.createElement("h3");
+        h3.className="left-h3";
+        h3.textContent = col.title;
+        styleElement(h3);
+        colDiv.appendChild(h3);
+
+        const p = document.createElement("p");
+        p.className="left-block eb-gara";
+        if(info[col.key]) p.textContent = info[col.key];
+        styleElement(p);
+        colDiv.appendChild(p);
+
+        footerDiv.appendChild(colDiv);
+      });
+
+      leftWrap.appendChild(footerDiv);
+
+      // TEMP: make sure left side has some min height to be visible
+      leftWrap.style.minHeight = "300px";
+      leftWrap.style.background = "rgba(255,255,255,0.1)";
+    })
+    .catch(err => console.error("Failed to load info sheet:", err));
+});
+</script>
+</body>
+</html>

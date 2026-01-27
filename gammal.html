@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Frilansare För Fred</title>
+  <meta name="description" content="Frilansare För Fred – samtal, projekt och evenemang för att förebygga väpnade konflikter." />
+  <link rel="icon" type="image/png" href="assets/portfolio_favicon.png"/>
+
+  <!-- Self-hosted Pangram faces already in your repo -->
+  <link rel="preload" href="assets/fonts/PPPangramSansRounded-CompactRegular.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/PPPangramSansRounded-Bold.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/PPPangramSansRounded-CompactRegular.otf" as="font" type="font/otf" crossorigin>
+  <link rel="preload" href="assets/fonts/PPPangramSansRounded-Bold.otf" as="font" type="font/otf" crossorigin>
+
+  <style>
+    /* === Self-hosted Pangram === */
+    @font-face {
+      font-family: "PPPangram Sans Rounded Compact";
+      src: local("PPPangramSansRounded-CompactRegular"),
+           url("assets/fonts/PPPangramSansRounded-CompactRegular.woff2") format("woff2"),
+           url("assets/fonts/PPPangramSansRounded-CompactRegular.otf") format("opentype");
+      font-weight: 400; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: "PPPangram Sans Rounded";
+      src: local("PPPangramSansRounded-Bold"),
+           url("assets/fonts/PPPangramSansRounded-Bold.woff2") format("woff2"),
+           url("assets/fonts/PPPangramSansRounded-Bold.otf") format("opentype");
+      font-weight: 700; font-style: normal; font-display: swap;
+    }
+
+    :root {
+      /* Disable faux styles */
+      * { font-synthesis-weight: none; font-synthesis-style: none; }
+
+      /* Spotlight 1 (white veil) */
+      --spot1-x: 50vw; --spot1-y: 50vh;
+      --spot1-radius: 70px; --spot1-feather: 220px;
+
+      /* Spotlight 2 (wireframe) */
+      --spot2-x: 50vw; --spot2-y: 50vh;
+      --spot2-radius: 250px; --spot2-feather: 80px;
+
+      --max-content: 960px;
+
+      /* Colors — tuned to the sketch */
+      --left-bg: #C5BFFF;   /* purple */
+      --right-bg: #9EE6A3;  /* mint green */
+
+      --outline: #111;
+
+      /* Peer (kept from previous build) */
+      --peer-size: 280px;
+      --peer-stroke: 1px;
+      --peer-color: #B51212;
+      --peer-text-size: 20px;
+      --peer-text-line: 1.35;
+      --peer-text-weight: 400;
+      --peer-text-width: calc(var(--peer-size) - 70px);
+      --peer-text-offset-x: 0px;
+      --peer-text-offset-y: 0px;
+      --peer-demo-x: 76vw;
+      --peer-demo-y: 68vh;
+
+      /* Fluid scale driven by the smaller screen dimension */
+      --u: 1vmin;                 /* base unit for spacing */
+      --pad-lg: calc(3.0 * var(--u));
+      --pad-md: calc(2.2 * var(--u));
+      --pad-sm: calc(1.4 * var(--u));
+
+      /* Type scale (roughly based on the sketch) */
+      --fs-title-xl: calc(24.0 * var(--u));   /* "frilansare för fred" */
+      --fs-h2:       calc(5.6 * var(--u));    /* big right column titles */
+      --fs-h3:       calc(2.6 * var(--u));    /* small caps-like label */
+      --fs-h4:       calc(1.8 * var(--u));    /* photo credit */
+      --fs-body:     calc(2.2 * var(--u));    /* manifesto + body */
+    }
+
+    /* Base reset */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: "PPPangram Sans Rounded Compact", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+      background: var(--left-bg); /* left column color behind everything */
+      color: #000;
+      line-height: 1.6;
+      overscroll-behavior: none;
+    }
+
+    /* Old .container layout is retired */
+    .container { display: none; }
+
+    /* === Split layout === */
+    .split { position: fixed; inset: 0; display: grid; grid-template-columns: 59vw 41vw; }
+    #left  { position: sticky; top: 0; height: 100vh; overflow: hidden; background: var(--left-bg); }
+    #right { height: 100vh; overflow-y: auto; background: var(--right-bg); }
+
+    .left-wrap { padding: var(--pad-lg); display: flex; flex-direction: column; height: 100%; }
+    .right-wrap { padding: calc(3.2 * var(--u)) calc(2.4 * var(--u)) calc(6 * var(--u)); max-width: 40vw; margin: 0 auto; }
+
+    /* EB Garamond (use local if installed; add files later if you want perfect parity) */
+    .eb-gara { font-family: "EB Garamond", Georgia, "Times New Roman", serif; font-weight: 400; }
+    .eb-gara-italic { font-family: "EB Garamond", Georgia, "Times New Roman", serif; font-style: italic; font-weight: 400; }
+
+    /* Left column type */
+    .left-title {
+      font-family: "PPPangram Sans Rounded", "PPPangram Sans Rounded Compact", Helvetica, Arial, sans-serif;
+      font-weight: 700;
+      /* Scale with viewport width, capped to the usable width of the left column */
+      font-size: clamp(64px, 13.3vw, calc(59vw - 2 * var(--pad-lg)));
+      line-height: 0.84;
+      letter-spacing: -0.06em;
+      margin: 0 0 calc(1.2 * var(--u)) 0;
+      text-align: left;
+      /* Prevent the heading from ever visually extending into the right column */
+      max-width: calc(59vw - 2 * var(--pad-lg));
+      text-wrap: balance;
+    }
+    .left-manifesto { font-size: var(--fs-body); line-height: 1.35; text-align: left; margin: 0; }
+    /* Manifesto split into three staggered blocks */
+    .left-manifesto-wrap { margin-top: calc(1.0 * var(--u)); }
+    .left-manifesto.m1 { width: calc(34 * var(--u)); margin-left: calc(23 * var(--u)); }
+    .left-manifesto.m2 { width: calc(32 * var(--u)); margin-left: calc(41 * var(--u)); margin-top: calc(0.6 * var(--u)); }
+    .left-manifesto.m3 { width: calc(56 * var(--u)); margin-left: calc(22 * var(--u)); margin-top: calc(0.8 * var(--u)); }
+    .left-h3 {
+      font-family: "PPPangram Sans Rounded Compact", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      font-weight: 400; font-size: var(--fs-h3); line-height: 1; margin: calc(2.2 * var(--u)) 0 var(--pad-sm); text-align: center;
+    }
+    .left-block { font-size: var(--fs-body); line-height: 1.3; text-align: center; margin: 0; }
+
+    /* Left footer — three columns pinned to bottom */
+    .left-footer { 
+      margin-top: auto;                 /* pushes footer to bottom inside the sticky left pane */
+      display: grid; 
+      grid-template-columns: repeat(3, 1fr);
+      gap: calc(2.2 * var(--u));
+      align-items: start;
+    }
+    .left-footer .left-h3 { margin: 0 0 calc(0.6 * var(--u)); }
+    .left-footer .left-block { margin: 0; }
+
+    /* Right column type */
+    .right-h3 {
+      font-family: "PPPangram Sans Rounded Compact", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      font-weight: 400; font-size: var(--fs-h3); line-height: 1; text-align: center; margin: var(--pad-sm) 0 calc(0.8 * var(--u));
+    }
+    .right-h2 {
+      font-family: "PPPangram Sans Rounded", "PPPangram Sans Rounded Compact", Helvetica, Arial, sans-serif;
+      font-weight: 700; font-size: var(--fs-h2); line-height: 0.9; letter-spacing: -0.04em; text-align: center; margin: 0 0 var(--pad-sm);
+    }
+    .right-h4 { font-size: var(--fs-h4); line-height: 1.25; text-align: center; margin: var(--pad-sm) 0 var(--pad-md); }
+    .right-body { font-size: var(--fs-body); line-height: 1.35; text-align: left; margin: 0 0 var(--pad-md); }
+
+    /* Image placeholder */
+    .ph-image {
+      display: block; width: 100%; height: min(42vh, calc(46 * var(--u)));
+      background: rgba(0,0,0,0.08); border: 1px solid rgba(0,0,0,0.25);
+      border-radius: calc(1.2 * var(--u)); margin: calc(1.2 * var(--u)) auto calc(0.6 * var(--u));
+    }
+
+    /* Spotlight overlay layers */
+    #veil { position: fixed; inset: 0; background: #fff; z-index: 10; pointer-events: none; }
+    #wireframe { position: fixed; inset: 0; z-index: 20; pointer-events: none; }
+
+    /* Wireframe boxes (kept so the system still works if you tag with data-wf) */
+    .wf-box {
+      position: absolute; box-sizing: border-box;
+      border: 1px solid var(--outline); border-radius: 0; color: var(--outline);
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'><g fill='none' stroke='currentColor'><line x1='0' y1='0' x2='100' y2='100' stroke-width='1' vector-effect='non-scaling-stroke'/><line x1='0' y1='100' x2='100' y2='0' stroke-width='1' vector-effect='non-scaling-stroke'/></g></svg>");
+      background-repeat: no-repeat; background-size: 100% 100%; background-position: center;
+    }
+
+    /* Masking for the two spotlights */
+    @supports ((-webkit-mask-image: radial-gradient(circle at 50% 50%, transparent, black)) or (mask-image: radial-gradient(circle at 50% 50%, transparent, black))) {
+      #veil {
+        -webkit-mask-image: radial-gradient(circle at var(--spot1-x) var(--spot1-y),
+          rgba(0,0,0,0) var(--spot1-radius), rgba(0,0,0,1) calc(var(--spot1-radius) + var(--spot1-feather)));
+                mask-image: radial-gradient(circle at var(--spot1-x) var(--spot1-y),
+          rgba(0,0,0,0) var(--spot1-radius), rgba(0,0,0,1) calc(var(--spot1-radius) + var(--spot1-feather)));
+      }
+      #wireframe {
+        -webkit-mask-image: radial-gradient(circle at var(--spot2-x) var(--spot2-y),
+          rgba(0,0,0,0) var(--spot2-radius), rgba(0,0,0,1) calc(var(--spot2-radius) + var(--spot2-feather)));
+                mask-image: radial-gradient(circle at var(--spot2-x) var(--spot2-y),
+          rgba(0,0,0,0) var(--spot2-radius), rgba(0,0,0,1) calc(var(--spot2-radius) + var(--spot2-feather)));
+      }
+    }
+    @supports not ((-webkit-mask-image: radial-gradient(circle at 50% 50%, transparent, black)) or (mask-image: radial-gradient(circle at 50% 50%, transparent, black))) {
+      #veil, #wireframe { display: none; }
+    }
+
+    /* Vignette (kept) */
+    #spot-vignette { position: fixed; inset: 0; pointer-events: none; z-index: 15; mix-blend-mode: multiply; }
+    #spot-vignette {
+      background-image: radial-gradient(
+        circle at var(--spot1-x) var(--spot1-y),
+        rgba(0,0,0,0) var(--spot1-radius),
+        rgba(0,0,0,0.05) calc(var(--spot1-radius) + var(--spot1-feather) * 0.70),
+        rgba(0,0,0,0.10) calc(var(--spot1-radius) + var(--spot1-feather) * 1.00),
+        rgba(0,0,0,0.12) calc(var(--spot1-radius) + var(--spot1-feather) * 1.10)
+      );
+      -webkit-mask-image: radial-gradient(circle at var(--spot1-x) var(--spot1-y),
+        rgba(0,0,0,1) var(--spot1-radius),
+        rgba(0,0,0,0.85) calc(var(--spot1-radius) + var(--spot1-feather) * 0.50),
+        rgba(0,0,0,0.30) calc(var(--spot1-radius) + var(--spot1-feather) * 1.00),
+        rgba(0,0,0,0.00) calc(var(--spot1-radius) + var(--spot1-feather) * 1.10));
+              mask-image: radial-gradient(circle at var(--spot1-x) var(--spot1-y),
+        rgba(0,0,0,1) var(--spot1-radius),
+        rgba(0,0,0,0.85) calc(var(--spot1-radius) + var(--spot1-feather) * 0.50),
+        rgba(0,0,0,0.30) calc(var(--spot1-radius) + var(--spot1-feather) * 1.00),
+        rgba(0,0,0,0.00) calc(var(--spot1-radius) + var(--spot1-feather) * 1.10));
+    }
+
+    /* Overlay/hint */
+    .hint { position: fixed; left: 16px; bottom: 16px; z-index: 30; font-size: 13px; opacity: .7;
+            background: rgba(255,255,255,.95); padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(0,0,0,.08); }
+    .sr-only { position: absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip: rect(0,0,0,0); white-space:nowrap; border:0; }
+    :focus-visible { outline: 2px solid #000; outline-offset: 2px; }
+
+    #center-hint {
+      position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+      z-index: 25; pointer-events: none; opacity: 0; transition: opacity .4s ease;
+      font-size: clamp(14px, 2.4vw, 20px);
+      color: #111;
+    }
+    #center-hint.show { opacity: 1; }
+
+    /* Peer cursor (kept for future) */
+    #peers-layer { position: fixed; inset: 0; z-index: 50; pointer-events: none; }
+    .peer { position: absolute; width: var(--peer-size); height: var(--peer-size); border-radius: 50%; border: var(--peer-stroke) solid var(--peer-color); color: var(--peer-color); box-sizing: border-box; }
+    .peer .peer-label { position: absolute; left: 50%; top: 50%; transform: translate(calc(-50% + var(--peer-text-offset-x)), calc(-50% + var(--peer-text-offset-y))); width: var(--peer-text-width);
+      font-family: "PPPangram Sans Rounded Compact", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-weight: var(--peer-text-weight); font-size: var(--peer-text-size); line-height: var(--peer-text-line); letter-spacing: 0.01em; }
+
+    /* Responsive adjustments */
+    @media (max-width: 1100px) {
+      .right-wrap { max-width: 100%; padding: calc(3.2 * var(--u)) calc(2.2 * var(--u)) calc(6 * var(--u)); }
+    }
+  </style>
+</head>
+<body>
+  <a class="sr-only" href="#main">Hoppa till innehåll</a>
+
+  <!-- Spotlight layers -->
+  <div id="veil" aria-hidden="true"></div>
+  <div id="wireframe" aria-hidden="true"></div>
+  <div id="spot-vignette" aria-hidden="true"></div>
+  <div id="center-hint" aria-hidden="true"><div class="bubble">Drag to move</div></div>
+
+  <!-- Peer cursors (optional) -->
+  <div id="peers-layer" aria-hidden="true"></div>
+
+  <div class="hint">Dra spotten för att upptäcka sidan</div>
+
+  <!-- New split layout -->
+  <main id="main">
+    <div class="split">
+      <aside id="left">
+        <div class="left-wrap">
+          <h1 class="left-title" data-wf="text">frilansare <br> för fred</h1>
+          <div class="left-manifesto-wrap">
+            <p class="left-manifesto eb-gara m1" data-wf="text">
+              Att sitta tillsammans som publik i ett scenrum, att lägga undan mobilen, stanna upp, lyssna, se – är motstånd mot den hyperaktivitet kapitalismen kräver av oss.
+            </p>
+            <p class="left-manifesto eb-gara m2" data-wf="text">
+              Konst är motstånd. <em>Frilansare För Fred</em> verkar långsamt och utan att detta ställs emot vartannat. <em>Frilansare För Fred</em> är ett försök att praktisera motstånd genom konstnärlig samverkan.
+            </p>
+            <p class="left-manifesto eb-gara m3" data-wf="text">
+              Genom gemensamma projekt, samtalsserier, aktioner och installationer erbjuder <em>Frilansare För Fred</em> ett rum för konst, demokrati och fred. Vi verkar på konsthallar, på gatan, i mail, i ateljéer och i lunchrum.
+            </p>
+          </div>
+
+          <div class="left-footer">
+            <div class="footer-col">
+              <h3 class="left-h3" data-wf="text">HITTA HIT:</h3>
+              <p class="left-block eb-gara" data-wf="text">
+                Ateljéförening Plan Fyra<br>
+                Lövholmsgränd 12<br>
+                T-Bana Liljeholmen
+              </p>
+            </div>
+            <div class="footer-col">
+              <h3 class="left-h3" data-wf="text">KONTAKTA OSS:</h3>
+              <p class="left-block eb-gara" data-wf="text">
+                070 483 23 21<br>
+                moa.moller@gmail.com<br>
+                lisabenk@gmail.com
+              </p>
+            </div>
+            <div class="footer-col">
+              <h3 class="left-h3" data-wf="text">ENGAGERA DIG:</h3>
+              <p class="left-block eb-gara" data-wf="text">
+                Gå med i Frilansare För Fred!
+              </p>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <section id="right">
+        <div class="right-wrap">
+          <h3 class="right-h3" data-wf="text">KOMMANDE:</h3>
+          <h2 class="right-h2" data-wf="text">samtal med svenska freds generalsekreterare</h2>
+          <h3 class="right-h3" data-wf="text">Måndag 1 September Kl 17:00 <br>Lövholmsgränd 12, Plan Fyra</h3>
+          <div class="ph-image" data-wf="img" aria-label="bildplats" role="img"></div>
+          <h4 class="right-h4 eb-gara-italic" data-wf="text">Foto: Felicia Margineanu</h4>
+          <p class="right-body eb-gara" data-wf="text">
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla.
+          </p>
+
+          <h3 class="right-h3" data-wf="text">TIDIGARE:</h3>
+          <h2 class="right-h2" data-wf="text">paneldiskussion: skiljeförfarande i praktiken</h2>
+          <h3 class="right-h3" data-wf="text">Tisdag 9 September Kl 12:00 <br>Lövholmsgränd 12, Plan Fyra</h3>
+          <div class="ph-image" data-wf="img" aria-label="bildplats" role="img"></div>
+          <h4 class="right-h4 eb-gara-italic" data-wf="text">Foto: Johan Jonasson</h4>
+          <p class="right-body eb-gara" data-wf="text">
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla.
+          </p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+  (function() {
+    const veil = document.getElementById('veil');
+    const wireframe = document.getElementById('wireframe');
+    const centerHint = document.getElementById('center-hint');
+    const scrollEl = document.getElementById('right'); // scroll target = green pane
+   
+    // === Plain design mode: no overlays/wireframe, native scrolling ===
+    const PLAIN = (/\/(plain|design)(\/|$)/i.test(location.pathname)
+                   || /(^|[?&#])(mode=plain|plain)(=|&|$)/i.test(location.search)
+                   || (location.hash && /plain/i.test(location.hash)));
+
+    if (PLAIN) {
+      // Hide all spotlight-related layers and hints
+      try { document.getElementById('veil')?.remove(); } catch(e) {}
+      try { document.getElementById('wireframe')?.remove(); } catch(e) {}
+      try { document.getElementById('spot-vignette')?.remove(); } catch(e) {}
+      try { document.getElementById('center-hint')?.remove(); } catch(e) {}
+      try { document.querySelector('.hint')?.remove(); } catch(e) {}
+
+      // Ensure native scrolling works without our preventDefault hooks
+      // (We simply skip the rest of the spotlight initialization.)
+      return;
+    }
+
+    /* ===== Peer cursor (kept visual placeholder) ===== */
+    class PeerCursor {
+      constructor({ id, x = 200, y = 200, color = getComputedStyle(document.documentElement).getPropertyValue('--peer-color').trim(), size = null, fields = {} }) {
+        this.id = id; this.color = color; this.size = size;
+        this.root = document.createElement('div'); this.root.className = 'peer';
+        this.root.style.setProperty('--peer-color', this.color);
+        if (this.size) this.root.style.setProperty('--peer-size', typeof this.size === 'number' ? this.size + 'px' : this.size);
+        this.label = document.createElement('div'); this.label.className = 'peer-label';
+        this.root.appendChild(this.label);
+        document.getElementById('peers-layer').appendChild(this.root);
+        this.setPosition(x, y); this.setFields(fields);
+      }
+      setPosition(x, y) { this.x = x; this.y = y; this.root.style.left = (x - this.root.offsetWidth / 2) + 'px'; this.root.style.top = (y - this.root.offsetHeight / 2) + 'px'; }
+      setFields({ ip = '', device = '', timezone = '', timeOnSite = '' } = {}) {
+        this.label.innerHTML = `
+          <span class="row"><span class="key">ip:</span><span class="val">${ip}</span></span>
+          <span class="row"><span class="key">device:</span><span class="val">${device}</span></span>
+          <span class="row"><span class="key">timezone:</span><span class="val">${timezone}</span></span>
+          <span class="row"><span class="key">time on site:</span><span class="val">${timeOnSite}</span></span>
+        `;
+      }
+    }
+
+    // Helper: resolve CSS lengths to px
+    function resolveLengthToPx(raw, axis){
+      const v = (raw || '').toString().trim();
+      if (!v) return axis === 'y' ? window.innerHeight/2 : window.innerWidth/2;
+      if (v.endsWith('px')) return parseFloat(v);
+      if (v.endsWith('vw')) return window.innerWidth * (parseFloat(v) / 100);
+      if (v.endsWith('vh')) return window.innerHeight * (parseFloat(v) / 100);
+      if (v.endsWith('%')) return (axis === 'y' ? window.innerHeight : window.innerWidth) * (parseFloat(v) / 100);
+      const n = parseFloat(v);
+      return isNaN(n) ? (axis === 'y' ? window.innerHeight/2 : window.innerWidth/2) : n;
+    }
+
+    function addPlaceholderPeer() {
+      const cs = getComputedStyle(document.documentElement);
+      const vx = cs.getPropertyValue('--peer-demo-x').trim() || '46vw';
+      const vy = cs.getPropertyValue('--peer-demo-y').trim() || '38vh';
+      const midX = Math.round(resolveLengthToPx(vx, 'x'));
+      const midY = Math.round(resolveLengthToPx(vy, 'y'));
+      const peer = new PeerCursor({
+        id: 'placeholder-1',
+        x: midX, y: midY, color: '#B51212',
+        size: getComputedStyle(document.documentElement).getPropertyValue('--peer-size').trim(),
+        fields: { ip:'85.229.73.112', device:'MacBook Pro', timezone:'UTC+2', timeOnSite:'3m 42s' }
+      });
+      window.addEventListener('resize', () => {
+        const cs2 = getComputedStyle(document.documentElement);
+        const rx = Math.round(resolveLengthToPx(cs2.getPropertyValue('--peer-demo-x').trim() || '46vw', 'x'));
+        const ry = Math.round(resolveLengthToPx(cs2.getPropertyValue('--peer-demo-y').trim() || '38vh', 'y'));
+        peer.setPosition(rx, ry);
+      });
+      return peer;
+    }
+
+    let hasNudged = false;
+    // Spotlight state
+    let targetX = window.innerWidth / 2;
+    let targetY = window.innerHeight / 2;
+    let spotX = targetX, spotY = targetY;
+    let dragging = false;
+    let lastPX = window.innerWidth / 2;
+    let lastPY = window.innerHeight / 2;
+
+
+    // Auto-scroll control
+    let lastTs = null;
+    const BAND_MIN = 120, BAND_MAX = 260, BASE_SPEED = 650, MAX_SPEED = 1200;
+
+    const tracked = [];
+    const lerp = (a,b,t)=>a+(b-a)*t;
+
+    function getSpotTotalRadius() {
+      const cs = getComputedStyle(document.documentElement);
+      const r1 = parseFloat(cs.getPropertyValue('--spot1-radius')) || 0;
+      const f1 = parseFloat(cs.getPropertyValue('--spot1-feather')) || 0;
+      const r2 = parseFloat(cs.getPropertyValue('--spot2-radius')) || 0;
+      const f2 = parseFloat(cs.getPropertyValue('--spot2-feather')) || 0;
+      return Math.max(r1+f1, r2+f2);
+    }
+    function setSpot(x, y){ targetX=x; targetY=y; }
+
+    function applySpot(){
+      const root = document.documentElement.style;
+      root.setProperty('--spot1-x', spotX + 'px');
+      root.setProperty('--spot1-y', spotY + 'px');
+      root.setProperty('--spot2-x', spotX + 'px');
+      root.setProperty('--spot2-y', spotY + 'px');
+    }
+
+    function computeScrollSpeedPxPerSec() {
+      const h = scrollEl ? scrollEl.clientHeight : window.innerHeight;
+      const band = Math.max(BAND_MIN, Math.min(BAND_MAX, h * 0.25));
+      const topDist = spotY, botDist = h - spotY;
+      let dir = 0, d = 0;
+      if (topDist < band) { dir = -1; d = topDist; }
+      else if (botDist < band) { dir = +1; d = botDist; }
+      else { return 0; }
+      const norm = 1 - (d / band);
+      const eased = Math.pow(norm, 1.35);
+      let v = BASE_SPEED * eased;
+      v = Math.min(v, MAX_SPEED);
+      return dir * v;
+    }
+
+    function animate(ts){
+      const ease = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 1 : 0.18;
+      spotX = lerp(spotX, targetX, ease);
+      spotY = lerp(spotY, targetY, ease);
+      applySpot();
+
+      if (lastTs == null) lastTs = ts || performance.now();
+      const now = ts || performance.now();
+      const dt = Math.min(0.05, Math.max(0.0, (now - lastTs) / 1000)); lastTs = now;
+
+      const v = computeScrollSpeedPxPerSec();
+      if (v !== 0) {
+        const dy = v * dt;
+        const el = scrollEl || document.documentElement;
+        const maxScroll = Math.max(0, el.scrollHeight - el.clientHeight);
+        const cur = el.scrollTop;
+        const next = Math.max(0, Math.min(maxScroll, cur + dy));
+        if (next !== cur) el.scrollTo({ top: next, left: 0 });
+      }
+      requestAnimationFrame(animate);
+    }
+
+    function onPointerDown(e){
+      dragging = true; document.body.classList.add('dragging'); e.preventDefault();
+      document.body.style.cursor = 'grabbing'; hideCenterHint(); updateFromEvent(e);
+    }
+    function onPointerMove(e){ if (!dragging) return; e.preventDefault(); updateFromEvent(e); }
+    function onPointerUp(){
+      dragging = false; document.body.classList.remove('dragging');
+      const inside = Math.hypot(lastPX - spotX, lastPY - spotY) <= getSpotTotalRadius();
+      document.body.style.cursor = inside ? 'grab' : '';
+    }
+    function updateFromEvent(e){
+      const x = (e.touches ? e.touches[0].clientX : e.clientX);
+      const y = (e.touches ? e.touches[0].clientY : e.clientY);
+      lastPX = x; lastPY = y; setSpot(x,y);
+    }
+    function updateHoverCursor(e){
+      if (dragging) return;
+      const x = e ? e.clientX : lastPX, y = e ? e.clientY : lastPY;
+      const inside = Math.hypot(x - spotX, y - spotY) <= getSpotTotalRadius();
+      document.body.style.cursor = inside ? 'grab' : '';
+    }
+
+    function showCenterHint(){ centerHint.style.display='block'; centerHint.classList.add('show'); }
+    function hideCenterHint(){ centerHint?.classList.remove('show'); setTimeout(()=>{ if(centerHint) centerHint.style.display='none'; }, 450); }
+    function positionHint(x,y){ centerHint.style.left = x+'px'; centerHint.style.top = y+'px'; }
+    function introNudge(){
+      if (hasNudged) return; hasNudged = true;
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      showCenterHint();
+      if (reduce) { setTimeout(hideCenterHint, 1200); return; }
+      const cx = window.innerWidth/2, cy = window.innerHeight/2; positionHint(cx,cy);
+      const A = Math.min(60, Math.max(28, window.innerWidth*0.06)); const D = 2000; let start=null;
+      function easeInOutSine(u){ return 0.5 - 0.5 * Math.cos(Math.PI * u); }
+      function frame(ts){
+        if(!start) start=ts;
+        const t = Math.min(1, (ts-start)/D);
+        const x = cx - A * Math.sin(2 * Math.PI * easeInOutSine(t));
+        setSpot(x, cy); positionHint(x, cy);
+        if (t < 1) requestAnimationFrame(frame); else { setSpot(cx,cy); positionHint(cx,cy); setTimeout(hideCenterHint,400); }
+      }
+      requestAnimationFrame(frame);
+    }
+
+    document.addEventListener('pointerdown', onPointerDown, { passive:false });
+    document.addEventListener('pointermove', onPointerMove, { passive:false });
+    document.addEventListener('pointerup', onPointerUp, { passive:false });
+    document.addEventListener('pointercancel', onPointerUp, { passive:false });
+    document.addEventListener('touchstart', () => { document.body.style.touchAction='none'; }, { passive:true });
+    document.addEventListener('touchend', () => { document.body.style.touchAction=''; });
+    document.addEventListener('pointermove', updateHoverCursor, { passive:true });
+
+    // Prevent native page scroll; spotlight controls the right pane programmatically
+    function preventScrollEvent(e){ e.preventDefault(); }
+    document.addEventListener('wheel', preventScrollEvent, { passive:false });
+    document.addEventListener('touchmove', preventScrollEvent, { passive:false });
+    document.addEventListener('keydown', (e) => {
+      const keys = ['PageDown','PageUp','Home','End','Space',' '];
+      if (keys.includes(e.key)) e.preventDefault();
+    }, { passive:false });
+
+    // Wireframe for any [data-wf] nodes
+    const trackedBoxes = [];
+    function buildWireframe(){
+      wireframe.innerHTML=''; trackedBoxes.length = 0;
+      document.querySelectorAll('[data-wf]').forEach((el) => {
+        const box = document.createElement('div'); box.className = 'wf-box';
+        wireframe.appendChild(box); trackedBoxes.push({ el, box });
+      });
+      updateWireframe();
+    }
+    let ticking=false;
+    function updateWireframe(){
+      if (ticking) return; ticking = true;
+      requestAnimationFrame(() => {
+        trackedBoxes.forEach(({ el, box }) => {
+          const r = el.getBoundingClientRect();
+          box.style.transform = `translate(${Math.round(r.left)}px, ${Math.round(r.top)}px)`;
+          box.style.width = Math.round(r.width) + 'px';
+          box.style.height = Math.round(r.height) + 'px';
+        });
+        ticking=false;
+      });
+    }
+    window.addEventListener('scroll', updateWireframe, { passive:true });
+    window.addEventListener('resize', () => { updateWireframe(); setSpot(window.innerWidth/2, window.innerHeight/2); });
+
+    // Init
+    buildWireframe();
+    setSpot(targetX, targetY);
+    applySpot();
+    requestAnimationFrame(animate);
+    updateHoverCursor();
+    addPlaceholderPeer();
+    setTimeout(introNudge, 500);
+
+    window.addEventListener('load', buildWireframe);
+  })();
+  </script>
+</body>
+</html>
