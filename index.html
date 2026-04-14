@@ -52,6 +52,20 @@
 <body>
 
   <div id="draggable-circle"></div>
+  <header id="info-header">
+  <h1 id="rubrik"></h1>
+  <div class="intro-text">
+    <p id="stycke1"></p>
+    <p id="stycke2"></p>
+    <p id="stycke3"></p>
+    <p id="stycke4"></p>
+  </div>
+  <div id="hitta-hit"></div>
+  <div id="kontakta-oss"></div>
+  <p id="engagera-dig"></p>
+</header>
+
+<div id="blog"></div>
   <main id="blog">
     <p>Loading…</p>
   </main>
@@ -174,65 +188,134 @@
 
     // --- Existing blog fetching code from Google Sheets ---
 
-    const SHEET_URL =
-      "https://docs.google.com/spreadsheets/d/1St2Nqx9SoFAaOX2Q62aBV69W9RbWx4fRGifG-P_Fh_U/gviz/tq?tqx=out:json&sheet=blog";
+const HEADER_URL = "https://docs.google.com/spreadsheets/d/1St2Nqx9SoFAaOX2Q62aBV69W9RbWx4fRGifG-P_Fh_U/gviz/tq?tqx=out:json&sheet=info";
 
-    fetch(SHEET_URL)
-      .then(res => res.text())
-      .then(text => {
-        const json = JSON.parse(text.substring(47).slice(0, -2));
-        const rows = json.table.rows;
-        const cols = json.table.cols.map(c => c.label);
+fetch(HEADER_URL)
+  .then(res => res.text())
+  .then(text => {
+    const json = JSON.parse(text.substring(47).slice(0, -2));
+    // data represents row 2 in your sheet (index 0 of the data rows)
+    const data = json.table.rows[1].c; 
 
-        const posts = rows
-          .map(row => {
-            const obj = {};
-            row.c.forEach((cell, i) => {
-              obj[cols[i]] = cell ? cell.v : null;
-            });
-            return obj;
-          })
-          .filter(post => post.published === true);
+    // Helper to safely get value or empty string
+    const val = (index) => (data[index] && data[index].v) ? data[index].v : "";
 
-        const container = document.getElementById("blog");
-        container.innerHTML = ""; // remove loading text
-        container.querySelectorAll("article").forEach(a => a.remove());
+    // Mapping columns to your HTML elements
+    document.getElementById("rubrik").textContent = val(0);
+    document.getElementById("stycke1").textContent = val(1);
+    document.getElementById("stycke2").textContent = val(2);
+    document.getElementById("stycke3").textContent = val(3);
+    document.getElementById("stycke4").textContent = val(4);
+    
+    // For columns containing HTML (hitta hit, kontakta oss), use innerHTML
+    document.getElementById("hitta-hit").innerHTML = val(5);
+    document.getElementById("kontakta-oss").innerHTML = val(6);
+    document.getElementById("engagera-dig").textContent = val(7);
+  })
+  .catch(err => console.error("Error loading header info:", err));
 
-        posts.forEach(post => {
-          const article = document.createElement("article");
+const SHEET_URL =
+  "https://docs.google.com/spreadsheets/d/1St2Nqx9SoFAaOX2Q62aBV69W9RbWx4fRGifG-P_Fh_U/gviz/tq?tqx=out:json&sheet=blog";
 
-          const title = document.createElement("h1");
-          title.textContent = post.title;
+fetch(SHEET_URL)
+  .then(res => res.text())
+  .then(text => {
+    const json = JSON.parse(text.substring(47).slice(0, -2));
+    const rows = json.table.rows;
+    const cols = json.table.cols.map(c => c.label);
 
-          const date = document.createElement("time");
-          if (post.date) {
-            // Google Sheets dates come as Date(YYYY, M, D)
-            const match = post.date.match(/Date\((\d+),(\d+),(\d+)\)/);
-            if (match) {
-              const [, y, m, d] = match;
-              const jsDate = new Date(Number(y), Number(m), Number(d));
-              date.textContent = jsDate.toISOString().split("T")[0];
-            }
-          }
-
-          const body = document.createElement("p");
-          body.textContent = post.body;
-
-          article.appendChild(title);
-          article.appendChild(date);
-          article.appendChild(body);
-
-          container.appendChild(article);
+    const allPosts = rows
+      .map(row => {
+        const obj = {};
+        row.c.forEach((cell, i) => {
+          obj[cols[i]] = cell ? cell.v : null;
         });
+        return obj;
       })
-      .catch(err => {
-        const blog = document.getElementById("blog");
-        blog.innerHTML = "";
-        const errorMsg = document.createElement("p");
-        errorMsg.textContent = "Failed to load posts.";
-        blog.appendChild(errorMsg);
-        console.error(err);
+      .filter(post => post.published === true);
+
+    const kommandePosts = allPosts.filter(p => p.type === "Kommande");
+    const tidgarePosts = allPosts.filter(p => p.type === "Tidigare");
+
+    const container = document.getElementById("blog");
+    container.innerHTML = "";
+
+    const renderGroup = (headerText, posts) => {
+      if (posts.length === 0) return;
+
+      const sectionHeader = document.createElement("h2");
+      sectionHeader.textContent = headerText.toUpperCase() + ":";
+      container.appendChild(sectionHeader);
+
+      posts.forEach(post => {
+        const article = document.createElement("article");
+
+        // Title
+        const title = document.createElement("h3");
+        title.textContent = post.title;
+        article.appendChild(title);
+
+// Date and Time
+const dateTimeInfo = document.createElement("p");
+let dateString = "";
+
+if (post.date) {
+  const match = post.date.match(/Date\((\d+),(\d+),(\d+)\)/);
+  if (match) {
+    const [, y, m, d] = match;
+    const jsDate = new Date(Number(y), Number(m), Number(d));
+    
+    const formattedDate = jsDate.toLocaleDateString('sv-SE', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long'
+    });
+    
+    dateString = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+  }
+}
+
+// Fixed Time Parsing
+if (post.time) {
+  // Extract hours and minutes from the "Date(1899,11,30,17,0,0)" string
+  const timeMatch = post.time.match(/Date\(\d+,\d+,\d+,(\d+),(\d+)/);
+  if (timeMatch) {
+    const hours = timeMatch[1];
+    const minutes = timeMatch[2].padStart(2, '0');
+    dateString += ` Kl ${hours}:${minutes}`;
+  } else {
+    // Fallback if it's already a simple string
+    dateString += ` Kl ${post.time}`;
+  }
+}
+
+dateTimeInfo.textContent = dateString;
+article.appendChild(dateTimeInfo);
+
+        // Location
+        if (post.location) {
+          const loc = document.createElement("p");
+          loc.textContent = post.location;
+          article.appendChild(loc);
+        }
+
+        // Body
+        const body = document.createElement("p");
+        body.textContent = post.body;
+        article.appendChild(body);
+
+        container.appendChild(article);
       });
+    };
+
+    renderGroup("Kommande", kommandePosts);
+    renderGroup("Tidigare", tidgarePosts);
+  })
+  .catch(err => {
+    const blog = document.getElementById("blog");
+    blog.innerHTML = "<p>Failed to load posts.</p>";
+    console.error(err);
+  });
   </script>
 
 </body>
