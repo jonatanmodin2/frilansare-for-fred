@@ -5,19 +5,43 @@
   <title>Simple Sheet Blog with Firebase Circles</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
+    @font-face {
+      font-family: 'PPPangramSansRounded-Bold';
+      src: url('assets/fonts/PPPangramSansRounded-Bold.woff2') format('woff2'),
+           url('assets/fonts/PPPangramSansRounded-Bold.otf') format('opentype');
+    }
+    @font-face {
+      font-family: 'PPPangramSansRounded-CompactRegular';
+      src: url('assets/fonts/PPPangramSansRounded-CompactRegular.woff2') format('woff2'),
+           url('assets/fonts/PPPangramSansRounded-CompactRegular.otf') format('opentype');
+    }
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      margin: 2rem;
-      max-width: 700px;
-      line-height: 1.5;
-      position: relative;
+      font-family: serif;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      display: flex;
+    }
+    .left {
+      width: 50%;
+      padding: 2rem;
+      overflow-y: auto;
+    }
+    .right {
+      width: 50%;
+      padding: 2rem;
+      overflow-y: auto;
     }
     article {
       margin-bottom: 4rem;
     }
     h1 {
+      font-family: 'PPPangramSansRounded-Bold', sans-serif;
       font-size: 1.8rem;
       margin-bottom: 0.2rem;
+    }
+    h2, h3 {
+      font-family: 'PPPangramSansRounded-CompactRegular', sans-serif;
     }
     time {
       font-size: 0.9rem;
@@ -52,23 +76,25 @@
 <body>
 
   <div id="draggable-circle"></div>
-  <header id="info-header">
-  <h1 id="rubrik"></h1>
-  <div class="intro-text">
-    <p id="stycke1"></p>
-    <p id="stycke2"></p>
-    <p id="stycke3"></p>
-    <p id="stycke4"></p>
+  <div class="left">
+    <header id="info-header">
+      <h1 id="rubrik"></h1>
+      <div class="intro-text">
+        <p id="stycke1"></p>
+        <p id="stycke2"></p>
+        <p id="stycke3"></p>
+        <p id="stycke4"></p>
+      </div>
+      <div id="hitta-hit"></div>
+      <div id="kontakta-oss"></div>
+      <p id="engagera-dig"></p>
+    </header>
   </div>
-  <div id="hitta-hit"></div>
-  <div id="kontakta-oss"></div>
-  <p id="engagera-dig"></p>
-</header>
-
-<div id="blog"></div>
-  <main id="blog">
-    <p>Loading…</p>
-  </main>
+  <div class="right">
+    <main id="blog">
+      <p>Loading…</p>
+    </main>
+  </div>
 
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
