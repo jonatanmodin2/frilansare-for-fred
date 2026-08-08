@@ -1,348 +1,51 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="sv">
 <head>
-  <meta charset="UTF-8" />
-  <title>Simple Sheet Blog with Firebase Circles</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    @font-face {
-      font-family: 'PPPangramSansRounded-Bold';
-      src: url('assets/fonts/PPPangramSansRounded-Bold.woff2') format('woff2'),
-           url('assets/fonts/PPPangramSansRounded-Bold.otf') format('opentype');
-    }
-    @font-face {
-      font-family: 'PPPangramSansRounded-CompactRegular';
-      src: url('assets/fonts/PPPangramSansRounded-CompactRegular.woff2') format('woff2'),
-           url('assets/fonts/PPPangramSansRounded-CompactRegular.otf') format('opentype');
-    }
-    body {
-      font-family: serif;
-      margin: 0;
-      padding: 0;
-      height: 100vh;
-      display: flex;
-    }
-    .left {
-      width: 50%;
-      padding: 2rem;
-      overflow-y: auto;
-    }
-    .right {
-      width: 50%;
-      padding: 2rem;
-      overflow-y: auto;
-    }
-    article {
-      margin-bottom: 4rem;
-    }
-    h1 {
-      font-family: 'PPPangramSansRounded-Bold', sans-serif;
-      font-size: 1.8rem;
-      margin-bottom: 0.2rem;
-    }
-    h2, h3 {
-      font-family: 'PPPangramSansRounded-CompactRegular', sans-serif;
-    }
-    time {
-      font-size: 0.9rem;
-      color: #666;
-    }
-    #draggable-circle {
-      width: 40px;
-      height: 40px;
-      background-color: #ff5722;
-      border-radius: 50%;
-      position: fixed;
-      top: 100px;
-      left: 100px;
-      cursor: grab;
-      z-index: 1000;
-    }
-    #draggable-circle:active {
-      cursor: grabbing;
-    }
-    /* Style for other users' circles */
-    .other-circle {
-      width: 40px;
-      height: 40px;
-      background-color: #2196f3;
-      border-radius: 50%;
-      position: fixed;
-      pointer-events: none;
-      z-index: 999;
-    }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Frilansare För Fred – samtal, projekt och evenemang för att förebygga väpnade konflikter.">
+  <title>Frilansare För Fred</title>
+  <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
+  <div id="my-circle" class="shared-circle" aria-label="Din cirkel" title="Dra mig"></div>
+  <svg id="discovery-veil" aria-hidden="true" preserveAspectRatio="none">
+    <defs>
+      <filter id="veil-window-feather" x="-100%" y="-100%" width="300%" height="300%">
+        <feGaussianBlur stdDeviation="58"></feGaussianBlur>
+      </filter>
+      <filter id="line-window-feather" x="-100%" y="-100%" width="300%" height="300%">
+        <feGaussianBlur stdDeviation="58"></feGaussianBlur>
+      </filter>
+      <mask id="window-mask" maskUnits="userSpaceOnUse">
+        <rect width="100%" height="100%" fill="white"></rect>
+        <g id="discovery-windows" filter="url(#veil-window-feather)"></g>
+      </mask>
+      <mask id="line-mask" maskUnits="userSpaceOnUse">
+        <rect width="100%" height="100%" fill="white"></rect>
+        <g id="line-windows" filter="url(#line-window-feather)"></g>
+      </mask>
+    </defs>
+    <rect width="100%" height="100%" fill="white" mask="url(#window-mask)"></rect>
+    <g id="structure-lines" mask="url(#line-mask)"></g>
+  </svg>
 
-  <div id="draggable-circle"></div>
-  <div class="left">
-    <header id="info-header">
-      <h1 id="rubrik"></h1>
-      <div class="intro-text">
-        <p id="stycke1"></p>
-        <p id="stycke2"></p>
-        <p id="stycke3"></p>
-        <p id="stycke4"></p>
+  <main class="split">
+    <aside id="left" aria-labelledby="site-title">
+      <div class="left-wrap" id="info-content" aria-busy="true">
+        <p class="loading-message">Laddar…</p>
       </div>
-      <div id="hitta-hit"></div>
-      <div id="kontakta-oss"></div>
-      <p id="engagera-dig"></p>
-    </header>
-  </div>
-  <div class="right">
-    <main id="blog">
-      <p>Loading…</p>
-    </main>
-  </div>
+    </aside>
 
-  <!-- Firebase SDKs -->
+    <section id="right" aria-label="Aktuellt och tidigare evenemang">
+      <div class="right-wrap" id="blog-content" aria-busy="true">
+        <p class="loading-message">Laddar…</p>
+      </div>
+    </section>
+  </main>
+
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
-
-  <script>
-    // Firebase configuration for your project (use the regional database URL)
-    const firebaseConfig = {
-      apiKey: "AIzaSyCkTn4tmo-tzwCR1KuzniDhDTe7R8MNNUo",
-      authDomain: "fff1-74e23.firebaseapp.com",
-      databaseURL: "https://fff1-74e23-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "fff1-74e23",
-      storageBucket: "fff1-74e23.appspot.com",
-      messagingSenderId: "24568244243",
-      appId: "1:24568243:web:419b04ff26b007756877e6",
-      measurementId: "G-572GKMK0S9"
-    };
-
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    // Generate a unique ID for this user session
-    const userId = 'user_' + Math.random().toString(36).substr(2, 9);
-
-    const circle = document.getElementById('draggable-circle');
-
-    // Reference for this user's position in the database
-    const userRef = db.ref('circles/' + userId);
-
-    // References for all circles
-    const circlesRef = db.ref('circles');
-
-    // Store other users' circle elements by their userId
-    const otherCircles = {};
-
-    // Update this user's circle position in Firebase
-    function updateUserPosition(left, top) {
-      userRef.set({ left, top });
-    }
-
-    // Remove this user's circle data on disconnect
-    userRef.onDisconnect().remove();
-
-    // Initialize position
-    let posLeft = circle.offsetLeft;
-    let posTop = circle.offsetTop;
-    updateUserPosition(posLeft, posTop);
-
-    // Dragging logic
-    let isDragging = false;
-    let offsetX = 0;
-    let offsetY = 0;
-
-    circle.addEventListener("mousedown", e => {
-      isDragging = true;
-      offsetX = e.clientX - circle.offsetLeft;
-      offsetY = e.clientY - circle.offsetTop;
-      circle.style.cursor = 'grabbing';
-    });
-
-    let lastUpdate = 0;
-    document.addEventListener("mousemove", e => {
-      if (!isDragging) return;
-
-      // Move the circle immediately for smooth UX
-      posLeft = e.clientX - offsetX;
-      posTop = e.clientY - offsetY;
-      circle.style.left = posLeft + "px";
-      circle.style.top = posTop + "px";
-
-      // Only update Firebase at most once every 100ms
-      const now = Date.now();
-      if (now - lastUpdate >= 100) {
-        lastUpdate = now;
-        updateUserPosition(posLeft, posTop);
-      }
-    });
-
-    document.addEventListener("mouseup", () => {
-      if (isDragging) {
-        isDragging = false;
-        circle.style.cursor = 'grab';
-      }
-    });
-
-    // Listen for changes in the circles data to render other users
-    circlesRef.on('value', snapshot => {
-      const data = snapshot.val() || {};
-
-      // Remove circles for users no longer present
-      Object.keys(otherCircles).forEach(id => {
-        if (!data[id]) {
-          document.body.removeChild(otherCircles[id]);
-          delete otherCircles[id];
-        }
-      });
-
-      // Update or create circles for other users
-      Object.entries(data).forEach(([id, pos]) => {
-        if (id === userId) return; // Skip this user's own circle
-
-        if (!otherCircles[id]) {
-          const otherCircle = document.createElement('div');
-          otherCircle.classList.add('other-circle');
-          // Add smooth transition for left/top
-          otherCircle.style.transition = 'left 0.1s linear, top 0.1s linear';
-          document.body.appendChild(otherCircle);
-          otherCircles[id] = otherCircle;
-        }
-        const c = otherCircles[id];
-        c.style.left = (pos.left || 0) + 'px';
-        c.style.top = (pos.top || 0) + 'px';
-      });
-    });
-
-
-    // --- Existing blog fetching code from Google Sheets ---
-
-const HEADER_URL = "https://docs.google.com/spreadsheets/d/1St2Nqx9SoFAaOX2Q62aBV69W9RbWx4fRGifG-P_Fh_U/gviz/tq?tqx=out:json&sheet=info";
-
-fetch(HEADER_URL)
-  .then(res => res.text())
-  .then(text => {
-    const json = JSON.parse(text.substring(47).slice(0, -2));
-    // data represents row 2 in your sheet (index 0 of the data rows)
-    const data = json.table.rows[1].c; 
-
-    // Helper to safely get value or empty string
-    const val = (index) => (data[index] && data[index].v) ? data[index].v : "";
-
-    // Mapping columns to your HTML elements
-    document.getElementById("rubrik").textContent = val(0);
-    document.getElementById("stycke1").textContent = val(1);
-    document.getElementById("stycke2").textContent = val(2);
-    document.getElementById("stycke3").textContent = val(3);
-    document.getElementById("stycke4").textContent = val(4);
-    
-    // For columns containing HTML (hitta hit, kontakta oss), use innerHTML
-    document.getElementById("hitta-hit").innerHTML = val(5);
-    document.getElementById("kontakta-oss").innerHTML = val(6);
-    document.getElementById("engagera-dig").textContent = val(7);
-  })
-  .catch(err => console.error("Error loading header info:", err));
-
-const SHEET_URL =
-  "https://docs.google.com/spreadsheets/d/1St2Nqx9SoFAaOX2Q62aBV69W9RbWx4fRGifG-P_Fh_U/gviz/tq?tqx=out:json&sheet=blog";
-
-fetch(SHEET_URL)
-  .then(res => res.text())
-  .then(text => {
-    const json = JSON.parse(text.substring(47).slice(0, -2));
-    const rows = json.table.rows;
-    const cols = json.table.cols.map(c => c.label);
-
-    const allPosts = rows
-      .map(row => {
-        const obj = {};
-        row.c.forEach((cell, i) => {
-          obj[cols[i]] = cell ? cell.v : null;
-        });
-        return obj;
-      })
-      .filter(post => post.published === true);
-
-    const kommandePosts = allPosts.filter(p => p.type === "Kommande");
-    const tidgarePosts = allPosts.filter(p => p.type === "Tidigare");
-
-    const container = document.getElementById("blog");
-    container.innerHTML = "";
-
-    const renderGroup = (headerText, posts) => {
-      if (posts.length === 0) return;
-
-      const sectionHeader = document.createElement("h2");
-      sectionHeader.textContent = headerText.toUpperCase() + ":";
-      container.appendChild(sectionHeader);
-
-      posts.forEach(post => {
-        const article = document.createElement("article");
-
-        // Title
-        const title = document.createElement("h3");
-        title.textContent = post.title;
-        article.appendChild(title);
-
-// Date and Time
-const dateTimeInfo = document.createElement("p");
-let dateString = "";
-
-if (post.date) {
-  const match = post.date.match(/Date\((\d+),(\d+),(\d+)\)/);
-  if (match) {
-    const [, y, m, d] = match;
-    const jsDate = new Date(Number(y), Number(m), Number(d));
-    
-    const formattedDate = jsDate.toLocaleDateString('sv-SE', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long'
-    });
-    
-    dateString = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
-  }
-}
-
-// Fixed Time Parsing
-if (post.time) {
-  // Extract hours and minutes from the "Date(1899,11,30,17,0,0)" string
-  const timeMatch = post.time.match(/Date\(\d+,\d+,\d+,(\d+),(\d+)/);
-  if (timeMatch) {
-    const hours = timeMatch[1];
-    const minutes = timeMatch[2].padStart(2, '0');
-    dateString += ` Kl ${hours}:${minutes}`;
-  } else {
-    // Fallback if it's already a simple string
-    dateString += ` Kl ${post.time}`;
-  }
-}
-
-dateTimeInfo.textContent = dateString;
-article.appendChild(dateTimeInfo);
-
-        // Location
-        if (post.location) {
-          const loc = document.createElement("p");
-          loc.textContent = post.location;
-          article.appendChild(loc);
-        }
-
-        // Body
-        const body = document.createElement("p");
-        body.textContent = post.body;
-        article.appendChild(body);
-
-        container.appendChild(article);
-      });
-    };
-
-    renderGroup("Kommande", kommandePosts);
-    renderGroup("Tidigare", tidgarePosts);
-  })
-  .catch(err => {
-    const blog = document.getElementById("blog");
-    blog.innerHTML = "<p>Failed to load posts.</p>";
-    console.error(err);
-  });
-  </script>
-
+  <script src="assets/site.js"></script>
 </body>
 </html>

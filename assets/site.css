@@ -1,0 +1,363 @@
+@font-face {
+  font-family: "PPPangram Sans Rounded Compact";
+  src: url("fonts/PPPangramSansRounded-CompactRegular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "PPPangram Sans Rounded";
+  src: url("fonts/PPPangramSansRounded-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "EB Garamond";
+  src: url("fonts/EBGaramond-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "EB Garamond";
+  src: url("fonts/EBGaramond-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "EB Garamond";
+  src: url("fonts/EBGaramond-Italic.ttf") format("truetype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+:root {
+  --left-bg: #c5bfff;
+  --right-bg: #a1ee9a;
+  --ink: #000;
+  --pad-lg: 2vw;
+  --pad-md: 1.6vw;
+  --pad-sm: .85vw;
+  /* Adjust each info-sheet body block independently. */
+  --manifesto-1-left-offset: 17vw;
+  --manifesto-2-left-offset: 27vw;
+  --manifesto-3-left-offset: 12vw;
+  --manifesto-4-left-offset: 17.5vw;
+  --manifesto-1-width: 450px;
+  --manifesto-2-width: 430px;
+  --manifesto-3-width: 430px;
+  --manifesto-4-width: 430px;
+  --post-image-width: 390px;
+  --post-image-ratio: 3 / 2;
+  --fs-h2: clamp(40px, 2.45vw, 47px);
+  --fs-h3: clamp(21px, 1.25vw, 24px);
+  --fs-body: clamp(21px, 1.25vw, 24px);
+  --window-diameter: clamp(200px, 23vw, 500px);
+  /* The reveal and line cut-outs share the drag position, but have separate looks. */
+  --veil-window-diameter: var(--window-diameter);
+  --veil-window-blur: 58px;
+  --line-window-diameter: clamp(200px, 38vw, 500px);
+  --line-window-blur: 30px;
+  --visitor-circle-diameter: 300px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { background: var(--left-bg); }
+
+body {
+  margin: 0;
+  color: var(--ink);
+  font-family: "EB Garamond", Garamond, Georgia, serif;
+  font-size: var(--fs-body);
+  line-height: 1.34;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a, a:visited, a:hover, a:active {
+  color: inherit;
+  text-decoration-thickness: 1px;
+  text-underline-offset: .09em;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: 59fr 41fr;
+  min-height: 100vh;
+}
+
+#left {
+  background: var(--left-bg);
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+}
+#right { background: var(--right-bg); min-width: 0; }
+
+.left-wrap, .right-wrap { padding: var(--pad-lg); }
+
+.left-wrap {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.right-wrap {
+  width: min(100%, 640px);
+  margin-inline: auto;
+  padding-top: clamp(31px, 1.85vw, 36px);
+}
+
+.left-title, .right-h2 {
+  font-family: "PPPangram Sans Rounded", system-ui, sans-serif;
+  font-weight: 700;
+}
+
+.left-title {
+  max-width: 100%;
+  margin: 13px 0 5px;
+  /* Sized from the left panel itself: the longest title line fills its usable width. */
+  font-size: 13.2vw;
+  font-size: 22.4cqi;
+  line-height: .8;
+  letter-spacing: -.075em;
+}
+
+.left-manifesto, .right-body {
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.left-manifesto {
+  width: min(var(--manifesto-width), calc(100% - var(--manifesto-left-offset)));
+  margin: 0 0 0 var(--manifesto-left-offset);
+  text-align: left;
+}
+
+.manifesto-1 {
+  --manifesto-left-offset: var(--manifesto-1-left-offset);
+  --manifesto-width: var(--manifesto-1-width);
+  margin-top: 0px;
+}
+
+.manifesto-2 {
+  --manifesto-left-offset: var(--manifesto-2-left-offset);
+  --manifesto-width: var(--manifesto-2-width);
+}
+
+.manifesto-3 {
+  --manifesto-left-offset: var(--manifesto-3-left-offset);
+  --manifesto-width: var(--manifesto-3-width);
+}
+
+.manifesto-4 {
+  --manifesto-left-offset: var(--manifesto-4-left-offset);
+  --manifesto-width: var(--manifesto-4-width);
+}
+
+.left-footer {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--pad-md);
+  align-items: start;
+  margin-top: auto;
+  padding-top: clamp(66px, 6.8vw, 130px);
+}
+
+.left-h3, .right-h3 {
+  margin: var(--pad-md) 0 var(--pad-sm);
+  font-family: "PPPangram Sans Rounded Compact", system-ui, sans-serif;
+  font-size: var(--fs-h3);
+  font-weight: 400;
+  letter-spacing: -.055em;
+  text-align: center;
+}
+
+.left-block {
+  margin: 0;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.4;
+  text-align: center;
+  white-space: normal;
+}
+
+/* The contact links are separate lines without preserving Sheet whitespace. */
+.footer-col:nth-child(2) .left-block a { display: block; }
+.footer-col:nth-child(2) .left-block br { display: none; }
+
+.right-group + .right-group { margin-top: clamp(56px, 5.2vw, 100px); }
+
+.right-group > .right-h3 { margin-top: 0; }
+
+.blog-post + .blog-post { margin-top: clamp(60px, 5.5vw, 106px); }
+
+.right-h2 {
+  max-width: 22vw;
+  margin: 0 auto var(--pad-sm);
+  font-size: var(--fs-h2);
+  line-height: .83;
+  letter-spacing: -.07em;
+  text-align: center;
+}
+
+.post-meta {
+  margin: 0 auto clamp(29px, 2.1vw, 41px);
+  font-family: "PPPangram Sans Rounded Compact", system-ui, sans-serif;
+  font-size: var(--fs-h3);
+  letter-spacing: -.055em;
+  line-height: 1.03;
+  text-align: center;
+}
+.post-meta time, .post-meta .location { display: block; }
+
+.post-image-figure {
+  width: min(100%, var(--post-image-width));
+  margin: 0 auto clamp(20px, 1.1vw, 41px);
+}
+
+.post-image-frame {
+  aspect-ratio: var(--post-image-ratio);
+  overflow: hidden;
+  background: var(--right-bg);
+  background: color-mix(in srgb, var(--right-bg), #000 8%);
+}
+
+.post-image-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.post-image-credit {
+  margin-top: 1em;
+  font-size: clamp(15px, .95vw, 18px);
+  font-style: italic;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.right-body {
+  max-width: 33vw;
+  margin-inline: auto;
+  line-height: 1.34;
+}
+
+.loading-message, .error-message { margin: 0; }
+
+#discovery-veil {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+}
+
+.shared-circle {
+  position: fixed;
+  z-index: 1001;
+  width: var(--window-diameter);
+  aspect-ratio: 1;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.shared-circle.is-dragging { cursor: grabbing; }
+
+.shared-circle--other {
+  width: var(--visitor-circle-diameter);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-inline: 2%;
+  border: 1px solid var(--visitor-color);
+  border-radius: 50%;
+  color: var(--visitor-color);
+  font-family: "PPPangram Sans Rounded Compact", system-ui, sans-serif;
+  font-size: var(--fs-h3);
+  letter-spacing: -.045em;
+  line-height: 1.35;
+  pointer-events: none;
+  transition: left 180ms cubic-bezier(.22, .61, .36, 1), top 180ms cubic-bezier(.22, .61, .36, 1);
+}
+
+.visitor-info {
+  display: grid;
+  width: 100%;
+  max-width: none;
+}
+
+.visitor-info-row { white-space: nowrap; }
+
+@media (min-width: 901px) {
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .split {
+    height: 100vh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  #left, #right {
+    height: 100vh;
+    min-height: 0;
+  }
+
+  #left {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .left-wrap { overflow: hidden; }
+
+  .left-footer {
+    position: absolute;
+    right: var(--pad-lg);
+    bottom: var(--pad-lg);
+    left: var(--pad-lg);
+    margin: 0;
+    padding: 0;
+  }
+
+  #right {
+    max-height: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+@media (max-width: 900px) {
+  .split { grid-template-columns: 1fr; }
+  .left-footer { grid-template-columns: 1fr; text-align: center; }
+  .manifesto-1, .manifesto-2, .manifesto-3, .manifesto-4 {
+    width: min(var(--manifesto-width), calc(100% - var(--manifesto-left-offset)));
+    margin: 0 0 0 var(--manifesto-left-offset);
+  }
+  .manifesto-1 { margin-top: var(--pad-md); }
+  .right-wrap { padding-top: var(--pad-lg); }
+  .left-footer {
+    position: static;
+    margin-top: auto;
+    padding-top: clamp(66px, 6.8vw, 130px);
+  }
+}
