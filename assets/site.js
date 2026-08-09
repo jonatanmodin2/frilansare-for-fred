@@ -18,7 +18,7 @@
   const visitorCirclesLayer = document.getElementById("visitor-circles");
   const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
   // Add or remove colors here to control the available visitor-circle palette.
-  const VISITOR_COLORS = ["#ed1c24", "#1557ff", "#d62f8d", "#007f62"];
+  const VISITOR_COLORS = ["#BF0000", "#262A8F", "#D29E00"];
   // Fallbacks used only if a real visitor has not supplied a field.
   const PLACEHOLDER_VISITOR_INFO = {
     device: "Okänd enhet",
@@ -467,6 +467,7 @@
     let revealScale = 0;
     let revealStarted = false;
     let revealAnimationFrame = null;
+    let resizePositionWriteTimer = null;
     let dragScrollAnimationFrame = null;
     let dragScrollLastTime = null;
     let dragScrollZone = resolvedCssLength("--window-scroll-zone");
@@ -571,13 +572,24 @@
       device: friendlyDeviceName(),
       timezone: utcOffset()
     };
+    const sharedViewportPosition = () => {
+      const { left, top } = pixelsFor(position);
+      return {
+        // These are independent of the draggable window's diameter, so another
+        // browser can place its smaller visitor outline at the same screen point.
+        viewportX: Math.min(1, Math.max(0, (left + circleWidth / 2) / window.innerWidth)),
+        viewportY: Math.min(1, Math.max(0, (top + circleHeight / 2) / window.innerHeight))
+      };
+    };
     const registerSession = () => userRef.update({
       ...position,
+      ...sharedViewportPosition(),
       ...visitorMetadata
     }).catch(error => console.error("Could not register visitor", error));
     const writePosition = () => userRef.update({
       x: position.x,
-      y: position.y
+      y: position.y,
+      ...sharedViewportPosition()
     }).catch(error => console.error("Could not update circle", error));
 
     const cancelWindowAnimation = () => {
@@ -717,9 +729,29 @@
       return VISITOR_COLORS[hash % VISITOR_COLORS.length];
     };
 
-    function placeVisitorCircle(element, visitorPosition) {
-      const left = visitorPosition.x * Math.max(0, window.innerWidth - visitorCircleDiameter);
-      const top = visitorPosition.y * Math.max(0, window.innerHeight - visitorCircleDiameter);
+    function placeVisitorCircle(element, visitorPosition, visitor = {}) {
+      // Firebase x/y are relative to the draggable window's travel distance,
+      // not the smaller visitor-outline diameter. Convert them through that
+      // original coordinate space so both circles describe the same location.
+      const x = Math.min(1, Math.max(0, Number(visitorPosition.x) || 0));
+      const y = Math.min(1, Math.max(0, Number(visitorPosition.y) || 0));
+      const sharedX = Number(visitor.viewportX);
+      const sharedY = Number(visitor.viewportY);
+      const hasSharedPosition = Number.isFinite(sharedX) && Number.isFinite(sharedY);
+      const windowCenterX = hasSharedPosition
+        ? Math.min(1, Math.max(0, sharedX)) * window.innerWidth
+        : x * Math.max(0, window.innerWidth - circleWidth) + circleWidth / 2;
+      const windowCenterY = hasSharedPosition
+        ? Math.min(1, Math.max(0, sharedY)) * window.innerHeight
+        : y * Math.max(0, window.innerHeight - circleHeight) + circleHeight / 2;
+      const left = Math.min(
+        Math.max(0, windowCenterX - visitorCircleDiameter / 2),
+        Math.max(0, window.innerWidth - visitorCircleDiameter)
+      );
+      const top = Math.min(
+        Math.max(0, windowCenterY - visitorCircleDiameter / 2),
+        Math.max(0, window.innerHeight - visitorCircleDiameter)
+      );
       element.style.transform = `translate(${left}px, ${top}px)`;
     }
 
@@ -846,9 +878,13 @@
       updateDiscoveryViewport();
       placeOwnCircle();
       otherCircles.forEach(({ element, position: otherPosition, visitor }) => {
-        placeVisitorCircle(element, otherPosition);
+        placeVisitorCircle(element, otherPosition, visitor);
         updateVisitorDetails(element, visitor);
       });
+      // A resize changes the viewport-relative shared centre. Send only once
+      // after resizing has settled, rather than writing for every resize event.
+      clearTimeout(resizePositionWriteTimer);
+      resizePositionWriteTimer = setTimeout(writePosition, 150);
     });
 
     const addOrUpdateOther = snapshot => {
@@ -858,9 +894,14 @@
       // Ignoring them prevents abandoned old tabs/reloads from appearing as visitors.
       if (raw.activeSession !== true) return;
       if (!Number.isFinite(Number(raw.x)) || !Number.isFinite(Number(raw.y))) return;
-      const otherPosition = { x: Number(raw.x), y: Number(raw.y) };
+      const otherPosition = {
+        x: Math.min(1, Math.max(0, Number(raw.x))),
+        y: Math.min(1, Math.max(0, Number(raw.y)))
+      };
       const visitor = {
         position: otherPosition,
+        viewportX: raw.viewportX,
+        viewportY: raw.viewportY,
         joinedAt: raw.joinedAt,
         device: raw.device,
         timezone: raw.timezone
@@ -873,7 +914,7 @@
       }
       other.position = otherPosition;
       other.visitor = visitor;
-      placeVisitorCircle(other.element, otherPosition);
+      placeVisitorCircle(other.element, otherPosition, visitor);
       updateVisitorDetails(other.element, visitor);
     };
     circlesRef.on("child_added", addOrUpdateOther);
