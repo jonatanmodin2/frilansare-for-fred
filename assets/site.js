@@ -12,9 +12,10 @@
   const discoveryVeil = document.getElementById("discovery-veil");
   const discoveryWindows = document.getElementById("discovery-windows");
   const lineWindows = document.getElementById("line-windows");
-  const veilWindowFilter = document.querySelector("#veil-window-feather feGaussianBlur");
-  const lineWindowFilter = document.querySelector("#line-window-feather feGaussianBlur");
+  const veilWindowGradient = document.getElementById("veil-window-gradient");
+  const lineWindowGradient = document.getElementById("line-window-gradient");
   const structureLines = document.getElementById("structure-lines");
+  const visitorCirclesLayer = document.getElementById("visitor-circles");
   const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
   // Add or remove colors here to control the available visitor-circle palette.
   const VISITOR_COLORS = ["#ed1c24", "#1557ff", "#d62f8d", "#007f62"];
@@ -29,6 +30,7 @@
   let activeTitle = null;
   let titleFitQueued = false;
   let structureLinesQueued = false;
+  let startWindowReveal = () => {};
 
   function addStructureLine(x1, y1, x2, y2) {
     const line = document.createElementNS(SVG_NAMESPACE, "line");
@@ -451,16 +453,41 @@
     const userRef = db.ref(`circles/${userId}`);
     const circlesRef = db.ref("circles");
     const otherCircles = new Map();
-    let position = { x: .5, y: .25 };
+    let position = { x: .5, y: .5 };
     let dragging = false;
     let pointerOffset = { x: 0, y: 0 };
     let lastWrite = 0;
+    let circleWidth = circle.offsetWidth;
+    let circleHeight = circle.offsetHeight;
+    let discoveryRenderQueued = false;
+    let windowAnimationFrame = null;
+    let dragPointerId = null;
+    let dragStartedAt = null;
+    let suppressVeilClick = false;
+    let revealScale = 0;
+    let revealStarted = false;
+    let revealAnimationFrame = null;
+    let dragScrollAnimationFrame = null;
+    let dragScrollLastTime = null;
+    let dragScrollZone = resolvedCssLength("--window-scroll-zone");
+    let dragScrollMaxSpeed = resolvedCssLength("--window-scroll-max-speed");
 
-    const clamp = value => Math.min(1, Math.max(0, value));
-    const pixelsFor = ({ x, y }, element = circle) => ({
-      left: x * Math.max(0, window.innerWidth - element.offsetWidth),
-      top: y * Math.max(0, window.innerHeight - element.offsetHeight)
+    const refreshCircleDimensions = () => {
+      circleWidth = circle.offsetWidth;
+      circleHeight = circle.offsetHeight;
+    };
+    const centeredPosition = () => ({
+      x: (window.innerWidth / 2 - circleWidth / 2) / Math.max(1, window.innerWidth - circleWidth),
+      y: (window.innerHeight / 2 - circleHeight / 2) / Math.max(1, window.innerHeight - circleHeight)
     });
+    const pixelsFor = ({ x, y }, element = circle) => {
+      const width = element === circle ? circleWidth : element.offsetWidth;
+      const height = element === circle ? circleHeight : element.offsetHeight;
+      return {
+        left: x * Math.max(0, window.innerWidth - width),
+        top: y * Math.max(0, window.innerHeight - height)
+      };
+    };
     const place = (element, pos) => {
       const { left, top } = pixelsFor(pos, element);
       element.style.left = `${left}px`;
@@ -487,34 +514,54 @@
     }
 
     let windowMaskSettings = readWindowMaskSettings();
+    let visitorCircleDiameter = resolvedCssLength("--visitor-circle-diameter");
+    let visitorCircleTextPadding = resolvedCssLength("--visitor-circle-text-padding");
+    function setGradientFeather(gradient, diameter, blur) {
+      if (!gradient) return;
+      const radius = Math.max(1, diameter / 2);
+      const core = Math.max(0, Math.min(1, 1 - (blur / radius)));
+      const feather = 1 - core;
+      const offsets = [0, core, core + feather * .24, core + feather * .56, core + feather * .82, 1];
+      [...gradient.querySelectorAll("stop")].forEach((stop, index) => {
+        stop.setAttribute("offset", String(offsets[index] ?? 1));
+      });
+    }
+    function applyWindowMaskSettings() {
+      setGradientFeather(veilWindowGradient, windowMaskSettings.veilDiameter, windowMaskSettings.veilBlur);
+      setGradientFeather(lineWindowGradient, windowMaskSettings.lineDiameter, windowMaskSettings.lineBlur);
+    }
+    function updateDiscoveryViewport() {
+      discoveryVeil?.setAttribute("viewBox", `0 0 ${window.innerWidth} ${window.innerHeight}`);
+    }
+    applyWindowMaskSettings();
+    updateDiscoveryViewport();
+    const veilHole = document.createElementNS(SVG_NAMESPACE, "circle");
+    const lineHole = document.createElementNS(SVG_NAMESPACE, "circle");
+    veilHole.setAttribute("fill", "url(#veil-window-gradient)");
+    lineHole.setAttribute("fill", "url(#line-window-gradient)");
+    discoveryWindows.replaceChildren(veilHole);
+    lineWindows.replaceChildren(lineHole);
 
     function renderDiscoveryWindows() {
       if (!discoveryVeil || !discoveryWindows || !lineWindows) return;
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-      const controlRadius = circle.offsetWidth / 2;
-      // Only the local circle reveals the site. Visitors are rendered above the
-      // veil as outlined information circles instead of additional windows.
-      const windowPositions = [position];
-      discoveryVeil.setAttribute("viewBox", `0 0 ${width} ${height}`);
-      discoveryWindows.replaceChildren();
-      lineWindows.replaceChildren();
-      veilWindowFilter?.setAttribute("stdDeviation", String(windowMaskSettings.veilBlur));
-      lineWindowFilter?.setAttribute("stdDeviation", String(windowMaskSettings.lineBlur));
+      const controlRadius = circleWidth / 2;
+      const { left, top } = pixelsFor(position);
+      const centerX = left + controlRadius;
+      const centerY = top + controlRadius;
+      veilHole.setAttribute("cx", String(centerX));
+      veilHole.setAttribute("cy", String(centerY));
+      veilHole.setAttribute("r", String((windowMaskSettings.veilDiameter / 2) * revealScale));
+      lineHole.setAttribute("cx", String(centerX));
+      lineHole.setAttribute("cy", String(centerY));
+      lineHole.setAttribute("r", String((windowMaskSettings.lineDiameter / 2) * revealScale));
+    }
 
-      windowPositions.forEach(windowPosition => {
-        const { left, top } = pixelsFor(windowPosition);
-        const centerX = left + controlRadius;
-        const centerY = top + controlRadius;
-        [[discoveryWindows, windowMaskSettings.veilDiameter / 2], [lineWindows, windowMaskSettings.lineDiameter / 2]]
-          .forEach(([target, radius]) => {
-            const hole = document.createElementNS(SVG_NAMESPACE, "circle");
-            hole.setAttribute("cx", String(centerX));
-            hole.setAttribute("cy", String(centerY));
-            hole.setAttribute("r", String(radius));
-            hole.setAttribute("fill", "black");
-            target.append(hole);
-          });
+    function scheduleDiscoveryRender() {
+      if (discoveryRenderQueued) return;
+      discoveryRenderQueued = true;
+      requestAnimationFrame(() => {
+        discoveryRenderQueued = false;
+        renderDiscoveryWindows();
       });
     }
 
@@ -532,59 +579,226 @@
       x: position.x,
       y: position.y
     }).catch(error => console.error("Could not update circle", error));
-    const placeOwnCircle = () => {
-      place(circle, position);
-      renderDiscoveryWindows();
+
+    const cancelWindowAnimation = () => {
+      if (windowAnimationFrame !== null) cancelAnimationFrame(windowAnimationFrame);
+      windowAnimationFrame = null;
     };
+    const finishIntroReveal = () => {
+      if (revealAnimationFrame !== null) cancelAnimationFrame(revealAnimationFrame);
+      revealAnimationFrame = null;
+      if (revealStarted) {
+        revealScale = 1;
+        scheduleDiscoveryRender();
+      }
+    };
+    const stopDragAutoScroll = () => {
+      if (dragScrollAnimationFrame !== null) cancelAnimationFrame(dragScrollAnimationFrame);
+      dragScrollAnimationFrame = null;
+      dragScrollLastTime = null;
+    };
+    const dragScrollSpeed = () => {
+      const { top } = pixelsFor(position);
+      const centerY = top + circleHeight / 2;
+      const zone = Math.max(1, dragScrollZone);
+      const topStrength = Math.max(0, Math.min(1, (zone - centerY) / zone));
+      const bottomStrength = Math.max(0, Math.min(1, (centerY - (window.innerHeight - zone)) / zone));
+      // Squaring the strength makes the speed ease in from zero at the zone edge.
+      return (bottomStrength * bottomStrength - topStrength * topStrength) * dragScrollMaxSpeed;
+    };
+    const runDragAutoScroll = now => {
+      if (!dragging) {
+        stopDragAutoScroll();
+        return;
+      }
+      const elapsed = Math.min(32, Math.max(0, now - (dragScrollLastTime ?? now)));
+      dragScrollLastTime = now;
+      const speed = dragScrollSpeed();
+      if (speed) {
+        const scrollTarget = window.matchMedia("(min-width: 901px)").matches
+          ? rightPanel
+          : document.scrollingElement;
+        scrollTarget.scrollTop += speed * elapsed / 1000;
+      }
+      dragScrollAnimationFrame = requestAnimationFrame(runDragAutoScroll);
+    };
+    const startDragAutoScroll = () => {
+      if (dragScrollAnimationFrame !== null) return;
+      dragScrollLastTime = performance.now();
+      dragScrollAnimationFrame = requestAnimationFrame(runDragAutoScroll);
+    };
+    const placeOwnCircle = () => {
+      const { left, top } = pixelsFor(position);
+      circle.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+      scheduleDiscoveryRender();
+    };
+
+    startWindowReveal = () => {
+      if (revealStarted) return;
+      revealStarted = true;
+      const startedAt = performance.now();
+      const openingDuration = 460;
+      const nudgeDuration = 1500;
+      const restingPosition = { ...position };
+      const nudgeDistance = Math.min(100, circleWidth * .3);
+      const step = now => {
+        const elapsed = now - startedAt;
+        const openingProgress = Math.min(1, elapsed / openingDuration);
+        revealScale = 1 - Math.pow(1 - openingProgress, 4);
+
+        if (elapsed > openingDuration) {
+          const nudgeProgress = Math.min(1, (elapsed - openingDuration) / nudgeDuration);
+          const envelope = Math.sin(nudgeProgress * Math.PI);
+          const offset = Math.sin(nudgeProgress * Math.PI * 2) * envelope * nudgeDistance;
+          position = {
+            ...restingPosition,
+            x: restingPosition.x + offset / Math.max(1, window.innerWidth - circleWidth)
+          };
+          placeOwnCircle();
+        }
+        scheduleDiscoveryRender();
+        if (elapsed < openingDuration + nudgeDuration) {
+          revealAnimationFrame = requestAnimationFrame(step);
+        } else {
+          revealAnimationFrame = null;
+          position = restingPosition;
+          placeOwnCircle();
+        }
+      };
+      revealAnimationFrame = requestAnimationFrame(step);
+    };
+
+    function isVeilAtPoint(x, y) {
+      const { left, top } = pixelsFor(position);
+      const centerX = left + circleWidth / 2;
+      const centerY = top + circleHeight / 2;
+      const clearRadius = Math.max(0, windowMaskSettings.veilDiameter / 2 - windowMaskSettings.veilBlur);
+      return Math.hypot(x - centerX, y - centerY) > clearRadius;
+    }
+
+    function isInsideWindowControl(x, y) {
+      const { left, top } = pixelsFor(position);
+      const centerX = left + circleWidth / 2;
+      const centerY = top + circleHeight / 2;
+      return Math.hypot(x - centerX, y - centerY) <= circleWidth / 2;
+    }
+
+    function moveWindowTo(x, y) {
+      cancelWindowAnimation();
+      finishIntroReveal();
+      const target = {
+        x: (x - circleWidth / 2) / Math.max(1, window.innerWidth - circleWidth),
+        y: (y - circleHeight / 2) / Math.max(1, window.innerHeight - circleHeight)
+      };
+      const start = { ...position };
+      const startedAt = performance.now();
+      const duration = 260;
+
+      const step = now => {
+        const progress = Math.min(1, (now - startedAt) / duration);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        position = {
+          x: start.x + (target.x - start.x) * eased,
+          y: start.y + (target.y - start.y) * eased
+        };
+        placeOwnCircle();
+        if (progress < 1) {
+          windowAnimationFrame = requestAnimationFrame(step);
+        } else {
+          windowAnimationFrame = null;
+          writePosition();
+        }
+      };
+      windowAnimationFrame = requestAnimationFrame(step);
+    }
 
     const colorForVisitor = id => {
       const hash = [...id].reduce((total, character) => total + character.charCodeAt(0), 0);
       return VISITOR_COLORS[hash % VISITOR_COLORS.length];
     };
 
+    function placeVisitorCircle(element, visitorPosition) {
+      const left = visitorPosition.x * Math.max(0, window.innerWidth - visitorCircleDiameter);
+      const top = visitorPosition.y * Math.max(0, window.innerHeight - visitorCircleDiameter);
+      element.style.transform = `translate(${left}px, ${top}px)`;
+    }
+
     function createVisitorCircle(id, visitor) {
-      const element = makeElement("div", "shared-circle shared-circle--other");
-      element.style.setProperty("--visitor-color", visitor.color || colorForVisitor(id));
-      const details = makeElement("div", "visitor-info");
-      element.append(details);
+      const color = visitor.color || colorForVisitor(id);
+      const element = document.createElementNS(SVG_NAMESPACE, "g");
+      element.classList.add("visitor-circle");
+      const outline = document.createElementNS(SVG_NAMESPACE, "circle");
+      outline.classList.add("visitor-outline");
+      outline.setAttribute("cx", String(visitorCircleDiameter / 2));
+      outline.setAttribute("cy", String(visitorCircleDiameter / 2));
+      outline.setAttribute("r", String(visitorCircleDiameter / 2 - .5));
+      outline.setAttribute("fill", "none");
+      outline.setAttribute("stroke", color);
+      outline.setAttribute("stroke-width", "1");
+      const details = document.createElementNS(SVG_NAMESPACE, "g");
+      details.classList.add("visitor-info");
+      details.setAttribute("fill", color);
+      element.append(outline, details);
       updateVisitorDetails(element, visitor);
-      document.body.append(element);
+      visitorCirclesLayer.append(element);
       return element;
     }
 
     function updateVisitorDetails(element, visitor) {
       const details = element.querySelector(".visitor-info");
       if (!details) return;
+      const outline = element.querySelector(".visitor-outline");
+      outline?.setAttribute("cx", String(visitorCircleDiameter / 2));
+      outline?.setAttribute("cy", String(visitorCircleDiameter / 2));
+      outline?.setAttribute("r", String(visitorCircleDiameter / 2 - .5));
       const info = {
         device: visitor.device || PLACEHOLDER_VISITOR_INFO.device,
         timezone: visitor.timezone || PLACEHOLDER_VISITOR_INFO.timezone,
         visit: formatVisitDuration(visitor.joinedAt)
       };
       const labelSpacing = "\u00a0\u00a0\u00a0";
-      details.replaceChildren(
-        makeElement("div", "visitor-info-row", `enhet:${labelSpacing}${info.device}`),
-        makeElement("div", "visitor-info-row", `tidszon:${labelSpacing}${info.timezone}`),
-        makeElement("div", "visitor-info-row", `varit här:${labelSpacing}${info.visit}`)
-      );
+      const fontSize = resolvedCssLength("--fs-h3");
+      const lineHeight = fontSize * 1.35;
+      const rows = [`enhet:${labelSpacing}${info.device}`, `tidszon:${labelSpacing}${info.timezone}`, `varit här:${labelSpacing}${info.visit}`];
+      const startY = visitorCircleDiameter / 2 - (lineHeight * rows.length) / 2 + fontSize * .78;
+      details.setAttribute("transform", `translate(${visitorCircleTextPadding}, ${startY})`);
+      details.replaceChildren(...rows.map((row, index) => {
+        const text = document.createElementNS(SVG_NAMESPACE, "text");
+        text.setAttribute("x", "0");
+        text.setAttribute("y", String(index * lineHeight));
+        text.setAttribute("font-family", "PPPangram Sans Rounded Compact, sans-serif");
+        text.setAttribute("font-size", String(fontSize));
+        text.setAttribute("font-weight", "400");
+        text.setAttribute("letter-spacing", "-.045em");
+        text.textContent = row;
+        return text;
+      }));
     }
 
     placeOwnCircle();
     registerSession();
     userRef.onDisconnect().remove();
 
-    circle.addEventListener("pointerdown", event => {
+    document.addEventListener("pointerdown", event => {
+      if (event.button !== 0 || event.target.closest("a") || !isInsideWindowControl(event.clientX, event.clientY)) return;
+      cancelWindowAnimation();
+      finishIntroReveal();
       dragging = true;
+      document.body.classList.add("is-dragging-window");
+      dragPointerId = event.pointerId;
+      dragStartedAt = { x: event.clientX, y: event.clientY };
       const rect = circle.getBoundingClientRect();
       pointerOffset = { x: event.clientX - rect.left, y: event.clientY - rect.top };
-      circle.setPointerCapture(event.pointerId);
       circle.classList.add("is-dragging");
-    });
+      startDragAutoScroll();
+      event.preventDefault();
+    }, true);
 
-    circle.addEventListener("pointermove", event => {
-      if (!dragging) return;
+    document.addEventListener("pointermove", event => {
+      if (!dragging || event.pointerId !== dragPointerId) return;
       position = {
-        x: clamp((event.clientX - pointerOffset.x) / Math.max(1, window.innerWidth - circle.offsetWidth)),
-        y: clamp((event.clientY - pointerOffset.y) / Math.max(1, window.innerHeight - circle.offsetHeight))
+        x: (event.clientX - pointerOffset.x) / Math.max(1, window.innerWidth - circleWidth),
+        y: (event.clientY - pointerOffset.y) / Math.max(1, window.innerHeight - circleHeight)
       };
       placeOwnCircle();
       if (Date.now() - lastWrite > 75) {
@@ -594,19 +808,47 @@
     });
 
     const endDrag = event => {
-      if (!dragging) return;
+      if (!dragging || event.pointerId !== dragPointerId) return;
       dragging = false;
+      stopDragAutoScroll();
+      dragPointerId = null;
+      document.body.classList.remove("is-dragging-window");
       circle.classList.remove("is-dragging");
-      if (circle.hasPointerCapture(event.pointerId)) circle.releasePointerCapture(event.pointerId);
+      suppressVeilClick = Math.hypot(event.clientX - dragStartedAt.x, event.clientY - dragStartedAt.y) > 3;
+      dragStartedAt = null;
       writePosition();
     };
-    circle.addEventListener("pointerup", endDrag);
-    circle.addEventListener("pointercancel", endDrag);
+    document.addEventListener("pointerup", endDrag);
+    document.addEventListener("pointercancel", endDrag);
+    window.addEventListener("blur", stopDragAutoScroll);
+    document.addEventListener("pointermove", event => {
+      const overLink = Boolean(event.target.closest("a"));
+      document.body.classList.toggle("is-over-window", !dragging && !overLink && isInsideWindowControl(event.clientX, event.clientY));
+    });
+    document.addEventListener("click", event => {
+      if (suppressVeilClick) {
+        suppressVeilClick = false;
+        return;
+      }
+      if (event.target.closest("a") || !isVeilAtPoint(event.clientX, event.clientY)) return;
+      event.preventDefault();
+      moveWindowTo(event.clientX, event.clientY);
+    }, true);
     window.addEventListener("resize", () => {
+      refreshCircleDimensions();
+      visitorCircleDiameter = resolvedCssLength("--visitor-circle-diameter");
+      visitorCircleTextPadding = resolvedCssLength("--visitor-circle-text-padding");
+      dragScrollZone = resolvedCssLength("--window-scroll-zone");
+      dragScrollMaxSpeed = resolvedCssLength("--window-scroll-max-speed");
+      if (!revealStarted) position = centeredPosition();
       windowMaskSettings = readWindowMaskSettings();
+      applyWindowMaskSettings();
+      updateDiscoveryViewport();
       placeOwnCircle();
-      otherCircles.forEach(({ element, position: otherPosition }) => place(element, otherPosition));
-      renderDiscoveryWindows();
+      otherCircles.forEach(({ element, position: otherPosition, visitor }) => {
+        placeVisitorCircle(element, otherPosition);
+        updateVisitorDetails(element, visitor);
+      });
     });
 
     const addOrUpdateOther = snapshot => {
@@ -616,7 +858,7 @@
       // Ignoring them prevents abandoned old tabs/reloads from appearing as visitors.
       if (raw.activeSession !== true) return;
       if (!Number.isFinite(Number(raw.x)) || !Number.isFinite(Number(raw.y))) return;
-      const otherPosition = { x: clamp(Number(raw.x)), y: clamp(Number(raw.y)) };
+      const otherPosition = { x: Number(raw.x), y: Number(raw.y) };
       const visitor = {
         position: otherPosition,
         joinedAt: raw.joinedAt,
@@ -631,7 +873,7 @@
       }
       other.position = otherPosition;
       other.visitor = visitor;
-      place(other.element, otherPosition);
+      placeVisitorCircle(other.element, otherPosition);
       updateVisitorDetails(other.element, visitor);
     };
     circlesRef.on("child_added", addOrUpdateOther);
@@ -648,7 +890,6 @@
 
   }
 
-  loadInfo();
-  loadBlog();
   initializeCircles();
+  Promise.all([loadInfo(), loadBlog()]).finally(startWindowReveal);
 })();

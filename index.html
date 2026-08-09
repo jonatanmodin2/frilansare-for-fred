@@ -11,23 +11,28 @@
   <div id="my-circle" class="shared-circle" aria-label="Din cirkel" title="Dra mig"></div>
   <svg id="discovery-veil" aria-hidden="true" preserveAspectRatio="none">
     <defs>
-      <filter id="veil-window-feather" x="-100%" y="-100%" width="300%" height="300%">
-        <feGaussianBlur stdDeviation="58"></feGaussianBlur>
-      </filter>
-      <filter id="line-window-feather" x="-100%" y="-100%" width="300%" height="300%">
-        <feGaussianBlur stdDeviation="58"></feGaussianBlur>
-      </filter>
+      <radialGradient id="veil-window-gradient">
+        <stop stop-color="black"></stop><stop stop-color="black"></stop>
+        <stop stop-color="#222"></stop><stop stop-color="#888"></stop>
+        <stop stop-color="#ddd"></stop><stop stop-color="white"></stop>
+      </radialGradient>
+      <radialGradient id="line-window-gradient">
+        <stop stop-color="black"></stop><stop stop-color="black"></stop>
+        <stop stop-color="#222"></stop><stop stop-color="#888"></stop>
+        <stop stop-color="#ddd"></stop><stop stop-color="white"></stop>
+      </radialGradient>
       <mask id="window-mask" maskUnits="userSpaceOnUse">
         <rect width="100%" height="100%" fill="white"></rect>
-        <g id="discovery-windows" filter="url(#veil-window-feather)"></g>
+        <g id="discovery-windows"></g>
       </mask>
       <mask id="line-mask" maskUnits="userSpaceOnUse">
         <rect width="100%" height="100%" fill="white"></rect>
-        <g id="line-windows" filter="url(#line-window-feather)"></g>
+        <g id="line-windows"></g>
       </mask>
     </defs>
     <rect width="100%" height="100%" fill="white" mask="url(#window-mask)"></rect>
     <g id="structure-lines" mask="url(#line-mask)"></g>
+    <g id="visitor-circles" mask="url(#line-mask)"></g>
   </svg>
 
   <main class="split">

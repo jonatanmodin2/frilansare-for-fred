@@ -59,13 +59,17 @@
   --fs-h2: clamp(40px, 2.45vw, 47px);
   --fs-h3: clamp(21px, 1.25vw, 24px);
   --fs-body: clamp(21px, 1.25vw, 24px);
-  --window-diameter: clamp(200px, 23vw, 500px);
+  --window-diameter: clamp(500px, 38vw, 1000px);
+  /* Drag the window into this top/bottom zone to auto-scroll. */
+  --window-scroll-zone: 180px;
+  --window-scroll-max-speed: 1100px;
   /* The reveal and line cut-outs share the drag position, but have separate looks. */
   --veil-window-diameter: var(--window-diameter);
-  --veil-window-blur: 58px;
-  --line-window-diameter: clamp(200px, 38vw, 500px);
-  --line-window-blur: 30px;
+  --veil-window-blur: 1000px;
+  --line-window-diameter: clamp(600px, 45vw, 1000px);
+  --line-window-blur: 100px;
   --visitor-circle-diameter: 300px;
+  --visitor-circle-text-padding: 38px;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -75,16 +79,23 @@ html { background: var(--left-bg); }
 body {
   margin: 0;
   color: var(--ink);
+  cursor: default;
   font-family: "EB Garamond", Garamond, Georgia, serif;
   font-size: var(--fs-body);
   line-height: 1.34;
   font-synthesis: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-user-select: none;
+  user-select: none;
 }
+
+body.is-over-window { cursor: grab; }
+body.is-dragging-window { cursor: grabbing; }
 
 a, a:visited, a:hover, a:active {
   color: inherit;
+  cursor: pointer;
   text-decoration-thickness: 1px;
   text-underline-offset: .09em;
 }
@@ -271,40 +282,25 @@ a, a:visited, a:hover, a:active {
 .shared-circle {
   position: fixed;
   z-index: 1001;
+  top: 0;
+  left: 0;
   width: var(--window-diameter);
   aspect-ratio: 1;
   cursor: grab;
   touch-action: none;
   user-select: none;
+  will-change: transform;
+  pointer-events: none;
 }
 
 .shared-circle.is-dragging { cursor: grabbing; }
 
-.shared-circle--other {
-  width: var(--visitor-circle-diameter);
-  z-index: 1100;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  padding-inline: 2%;
-  border: 1px solid var(--visitor-color);
-  border-radius: 50%;
-  color: var(--visitor-color);
-  font-family: "PPPangram Sans Rounded Compact", system-ui, sans-serif;
-  font-size: var(--fs-h3);
-  letter-spacing: -.045em;
-  line-height: 1.35;
+#visitor-circles .visitor-circle {
   pointer-events: none;
-  transition: left 180ms cubic-bezier(.22, .61, .36, 1), top 180ms cubic-bezier(.22, .61, .36, 1);
+  transform-box: view-box;
+  transform-origin: 0 0;
+  transition: transform 180ms cubic-bezier(.22, .61, .36, 1);
 }
-
-.visitor-info {
-  display: grid;
-  width: 100%;
-  max-width: none;
-}
-
-.visitor-info-row { white-space: nowrap; }
 
 @media (min-width: 901px) {
   html, body {
