@@ -7,6 +7,7 @@
 
   const infoContainer = document.getElementById("info-content");
   const blogContainer = document.getElementById("blog-content");
+  const mobileFooterContainer = document.getElementById("mobile-footer");
   const leftPanel = document.getElementById("left");
   const rightPanel = document.getElementById("right");
   const discoveryVeil = document.getElementById("discovery-veil");
@@ -30,18 +31,33 @@
   let activeTitle = null;
   let titleFitQueued = false;
   let structureLinesQueued = false;
+  let structureLineIndex = 0;
   let startWindowReveal = () => {};
 
+  // A refreshed mobile page should always introduce itself from the logo, not
+  // from Safari's restored document position.
+  if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+  const resetInitialScroll = () => {
+    window.scrollTo(0, 0);
+    rightPanel.scrollTop = 0;
+  };
+  resetInitialScroll();
+  window.addEventListener("pageshow", resetInitialScroll);
+
   function addStructureLine(x1, y1, x2, y2) {
-    const line = document.createElementNS(SVG_NAMESPACE, "line");
+    let line = structureLines.children[structureLineIndex];
+    if (!line) {
+      line = document.createElementNS(SVG_NAMESPACE, "line");
+      line.setAttribute("stroke", "black");
+      line.setAttribute("stroke-width", "1");
+      line.setAttribute("vector-effect", "non-scaling-stroke");
+      structureLines.append(line);
+    }
     line.setAttribute("x1", String(x1));
     line.setAttribute("y1", String(y1));
     line.setAttribute("x2", String(x2));
     line.setAttribute("y2", String(y2));
-    line.setAttribute("stroke", "black");
-    line.setAttribute("stroke-width", "1");
-    line.setAttribute("vector-effect", "non-scaling-stroke");
-    structureLines.append(line);
+    structureLineIndex += 1;
   }
 
   function renderStructureLines() {
@@ -49,20 +65,26 @@
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     const rightBounds = rightPanel.getBoundingClientRect();
+    const stackedLayout = window.matchMedia("(max-width: 900px)").matches;
+    const leftDividerEnd = stackedLayout ? viewportWidth : rightBounds.left;
+    const feedDividerStart = stackedLayout ? 0 : rightBounds.left;
     discoveryVeil.setAttribute("viewBox", `0 0 ${viewportWidth} ${viewportHeight}`);
-    structureLines.replaceChildren();
+    structureLineIndex = 0;
 
-    // The fixed left-column frame.
-    addStructureLine(rightBounds.left, 0, rightBounds.left, viewportHeight);
+    // On desktop the left panel has a vertical edge. On mobile it is stacked,
+    // so its horizontal dividers instead span the full viewport.
+    if (!stackedLayout) addStructureLine(rightBounds.left, 0, rightBounds.left, viewportHeight);
     const title = activeTitle || document.getElementById("site-title");
-    const footer = infoContainer.querySelector(".left-footer");
+    const footer = stackedLayout
+      ? mobileFooterContainer?.querySelector(".left-footer")
+      : infoContainer.querySelector(".left-footer");
     if (title) {
       const titleBounds = title.getBoundingClientRect();
-      addStructureLine(0, titleBounds.bottom, rightBounds.left, titleBounds.bottom);
+      addStructureLine(0, titleBounds.bottom, leftDividerEnd, titleBounds.bottom);
     }
     if (footer) {
       const footerBounds = footer.getBoundingClientRect();
-      addStructureLine(0, footerBounds.top, rightBounds.left, footerBounds.top);
+      addStructureLine(0, footerBounds.top, leftDividerEnd, footerBounds.top);
     }
 
     // The feed moves beneath the fixed veil, so its separators use its current
@@ -76,16 +98,22 @@
         const headingBounds = heading.getBoundingClientRect();
         const firstPostBounds = posts[0].getBoundingClientRect();
         const dividerY = (headingBounds.bottom + firstPostBounds.top) / 2;
-        addStructureLine(rightBounds.left, dividerY, viewportWidth, dividerY);
+        addStructureLine(feedDividerStart, dividerY, viewportWidth, dividerY);
       }
 
       posts.slice(0, -1).forEach((post, index) => {
         const currentBounds = post.getBoundingClientRect();
         const nextBounds = posts[index + 1].getBoundingClientRect();
         const dividerY = (currentBounds.bottom + nextBounds.top) / 2;
-        addStructureLine(rightBounds.left, dividerY, viewportWidth, dividerY);
+        addStructureLine(feedDividerStart, dividerY, viewportWidth, dividerY);
       });
     });
+
+    // Keep the SVG collection in sync with the current number of dividers
+    // without tearing down and recreating it every scroll frame.
+    while (structureLines.children.length > structureLineIndex) {
+      structureLines.lastElementChild.remove();
+    }
   }
 
   function scheduleStructureLines() {
@@ -161,6 +189,13 @@
     });
     event.preventDefault();
   }, { passive: false });
+
+  // Hidden viewing shortcut: V reveals the page, V again restores the veil.
+  document.addEventListener("keydown", event => {
+    if (event.key.toLowerCase() !== "v" || event.metaKey || event.ctrlKey || event.altKey) return;
+    if (event.target.matches("input, textarea, select, [contenteditable='true']")) return;
+    document.body.classList.toggle("is-veil-hidden");
+  });
 
   function makeElement(tag, className, text) {
     const element = document.createElement(tag);
@@ -305,6 +340,9 @@
     });
     fragment.append(footer);
     infoContainer.replaceChildren(fragment);
+    // The mobile composition places the same footer after the green feed.
+    // Keep a separate rendered copy so the desktop DOM and layout stay intact.
+    mobileFooterContainer?.replaceChildren(footer.cloneNode(true));
     activeTitle = title;
     scheduleTitleFit();
     scheduleStructureLines();
@@ -477,16 +515,22 @@
       circleWidth = circle.offsetWidth;
       circleHeight = circle.offsetHeight;
     };
+    const travelDistance = (viewportSize, elementSize) => {
+      const distance = viewportSize - elementSize;
+      // Preserve a signed distance when the window is larger than the viewport.
+      // That is what lets a mobile-sized window travel sideways beyond its edges.
+      return Math.abs(distance) < .01 ? 1 : distance;
+    };
     const centeredPosition = () => ({
-      x: (window.innerWidth / 2 - circleWidth / 2) / Math.max(1, window.innerWidth - circleWidth),
-      y: (window.innerHeight / 2 - circleHeight / 2) / Math.max(1, window.innerHeight - circleHeight)
+      x: (window.innerWidth / 2 - circleWidth / 2) / travelDistance(window.innerWidth, circleWidth),
+      y: (window.innerHeight / 2 - circleHeight / 2) / travelDistance(window.innerHeight, circleHeight)
     });
     const pixelsFor = ({ x, y }, element = circle) => {
       const width = element === circle ? circleWidth : element.offsetWidth;
       const height = element === circle ? circleHeight : element.offsetHeight;
       return {
-        left: x * Math.max(0, window.innerWidth - width),
-        top: y * Math.max(0, window.innerHeight - height)
+        left: x * travelDistance(window.innerWidth, width),
+        top: y * travelDistance(window.innerHeight, height)
       };
     };
     const place = (element, pos) => {
@@ -505,12 +549,11 @@
     }
 
     function readWindowMaskSettings() {
-      const styles = getComputedStyle(document.documentElement);
       return {
         veilDiameter: resolvedCssLength("--veil-window-diameter"),
-        veilBlur: Number.parseFloat(styles.getPropertyValue("--veil-window-blur")),
+        veilBlur: resolvedCssLength("--veil-window-blur"),
         lineDiameter: resolvedCssLength("--line-window-diameter"),
-        lineBlur: Number.parseFloat(styles.getPropertyValue("--line-window-blur"))
+        lineBlur: resolvedCssLength("--line-window-blur")
       };
     }
 
@@ -630,7 +673,11 @@
         const scrollTarget = window.matchMedia("(min-width: 901px)").matches
           ? rightPanel
           : document.scrollingElement;
+        const previousScrollTop = scrollTarget.scrollTop;
         scrollTarget.scrollTop += speed * elapsed / 1000;
+        // The scroll event can arrive a frame later in Safari. Update here as
+        // well so the fixed SVG dividers share this exact scroll frame.
+        if (scrollTarget.scrollTop !== previousScrollTop) renderStructureLines();
       }
       dragScrollAnimationFrame = requestAnimationFrame(runDragAutoScroll);
     };
@@ -664,7 +711,7 @@
           const offset = Math.sin(nudgeProgress * Math.PI * 2) * envelope * nudgeDistance;
           position = {
             ...restingPosition,
-            x: restingPosition.x + offset / Math.max(1, window.innerWidth - circleWidth)
+            x: restingPosition.x + offset / travelDistance(window.innerWidth, circleWidth)
           };
           placeOwnCircle();
         }
@@ -699,8 +746,8 @@
       cancelWindowAnimation();
       finishIntroReveal();
       const target = {
-        x: (x - circleWidth / 2) / Math.max(1, window.innerWidth - circleWidth),
-        y: (y - circleHeight / 2) / Math.max(1, window.innerHeight - circleHeight)
+        x: (x - circleWidth / 2) / travelDistance(window.innerWidth, circleWidth),
+        y: (y - circleHeight / 2) / travelDistance(window.innerHeight, circleHeight)
       };
       const start = { ...position };
       const startedAt = performance.now();
@@ -829,15 +876,17 @@
     document.addEventListener("pointermove", event => {
       if (!dragging || event.pointerId !== dragPointerId) return;
       position = {
-        x: (event.clientX - pointerOffset.x) / Math.max(1, window.innerWidth - circleWidth),
-        y: (event.clientY - pointerOffset.y) / Math.max(1, window.innerHeight - circleHeight)
+        x: (event.clientX - pointerOffset.x) / travelDistance(window.innerWidth, circleWidth),
+        y: (event.clientY - pointerOffset.y) / travelDistance(window.innerHeight, circleHeight)
       };
       placeOwnCircle();
       if (Date.now() - lastWrite > 75) {
         lastWrite = Date.now();
         writePosition();
       }
-    });
+      // Safari can otherwise treat this gesture as a normal page scroll.
+      event.preventDefault();
+    }, { passive: false });
 
     const endDrag = event => {
       if (!dragging || event.pointerId !== dragPointerId) return;
@@ -852,6 +901,11 @@
     };
     document.addEventListener("pointerup", endDrag);
     document.addEventListener("pointercancel", endDrag);
+    // Legacy iOS Safari may dispatch a touch scroll before its pointer-event
+    // counterpart. Prevent it only while the window is actively held.
+    document.addEventListener("touchmove", event => {
+      if (dragging) event.preventDefault();
+    }, { passive: false });
     window.addEventListener("blur", stopDragAutoScroll);
     document.addEventListener("pointermove", event => {
       const overLink = Boolean(event.target.closest("a"));
@@ -932,5 +986,8 @@
   }
 
   initializeCircles();
-  Promise.all([loadInfo(), loadBlog()]).finally(startWindowReveal);
+  Promise.all([loadInfo(), loadBlog()]).finally(() => {
+    resetInitialScroll();
+    startWindowReveal();
+  });
 })();

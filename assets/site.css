@@ -68,13 +68,19 @@
   --veil-window-blur: 1000px;
   --line-window-diameter: clamp(600px, 45vw, 1000px);
   --line-window-blur: 100px;
+  /* Mobile-only window controls. These take effect below 901px. */
+  --mobile-window-diameter: clamp(100px, 90vw, 560px);
+  --mobile-veil-window-diameter: var(--mobile-window-diameter);
+  --mobile-veil-window-blur: clamp(100px, 30vw, 1000px);
+  --mobile-line-window-diameter: clamp(480px, 70vw, 660px);
+  --mobile-line-window-blur: clamp(75px, 25vw, 120px);
   --visitor-circle-diameter: 300px;
   --visitor-circle-text-padding: 38px;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
 
-html { background: var(--left-bg); }
+html { background: #fff; }
 
 body {
   margin: 0;
@@ -113,6 +119,7 @@ a, a:visited, a:hover, a:active {
   flex-direction: column;
 }
 #right { background: var(--right-bg); min-width: 0; }
+#mobile-footer { display: none; }
 
 .left-wrap, .right-wrap { padding: var(--pad-lg); }
 
@@ -276,8 +283,14 @@ a, a:visited, a:hover, a:active {
   inset: 0;
   width: 100vw;
   height: 100vh;
+  /* Keep Safari's SVG viewport aligned with its live browser viewport.
+     Without this, its fixed 100vh box can be taller than the SVG viewBox,
+     stretching every SVG circle vertically when the browser bars are visible. */
+  height: 100dvh;
   pointer-events: none;
 }
+
+body.is-veil-hidden #discovery-veil { display: none; }
 
 .shared-circle {
   position: fixed;
@@ -343,17 +356,77 @@ a, a:visited, a:hover, a:active {
 }
 
 @media (max-width: 900px) {
+  :root {
+    /* Adjust these mobile values independently from the desktop window above. */
+    --window-diameter: var(--mobile-window-diameter);
+    --veil-window-diameter: var(--mobile-veil-window-diameter);
+    --veil-window-blur: var(--mobile-veil-window-blur);
+    --line-window-diameter: var(--mobile-line-window-diameter);
+    --line-window-blur: var(--mobile-line-window-blur);
+    --mobile-visitor-circle-diameter: 65vw;
+    --mobile-visitor-circle-text-padding: 30px;
+    --visitor-circle-diameter: var(--mobile-visitor-circle-diameter);
+    --visitor-circle-text-padding: var(--mobile-visitor-circle-text-padding);
+    --fs-body: clamp(17px, 3.1vw, 19px);
+    --fs-h2: clamp(38px, 7.8vw, 46px);
+    --fs-h3: clamp(19px, 3.8vw, 22px);
+    --post-image-width: 75vw;
+  }
+
+  html, body { overflow-x: hidden; }
   .split { grid-template-columns: 1fr; }
-  .left-footer { grid-template-columns: 1fr; text-align: center; }
+  .left-wrap {
+    min-height: 0;
+    padding: 10px 8px clamp(40px, 8vw, 56px);
+  }
+  .left-title { margin: 0 0 27px; }
   .manifesto-1, .manifesto-2, .manifesto-3, .manifesto-4 {
     width: min(var(--manifesto-width), calc(100% - var(--manifesto-left-offset)));
     margin: 0 0 0 var(--manifesto-left-offset);
   }
-  .manifesto-1 { margin-top: var(--pad-md); }
-  .right-wrap { padding-top: var(--pad-lg); }
-  .left-footer {
-    position: static;
-    margin-top: auto;
-    padding-top: clamp(66px, 6.8vw, 130px);
+  .manifesto-1 { --manifesto-1-left-offset: 18vw; --manifesto-1-width: 66vw; }
+  .manifesto-2 { --manifesto-2-left-offset: 32vw; --manifesto-2-width: 62vw; }
+  .manifesto-3 { --manifesto-3-left-offset: 3vw; --manifesto-3-width: 76vw; }
+  .manifesto-4 { --manifesto-4-left-offset: 18vw; --manifesto-4-width: 66vw; }
+  #info-content > .left-footer { display: none; }
+  .right-wrap {
+    width: 100%;
+    padding: 55px 20px 66px;
+  }
+  .right-group + .right-group { margin-top: 72px; }
+  .right-h2 {
+    max-width: 74vw;
+    margin-bottom: 18px;
+  }
+  .post-meta { margin-bottom: 28px; }
+  .post-image-figure { margin-bottom: 27px; }
+  .post-image-credit { margin-top: 9px; }
+  .right-body {
+    max-width: none;
+    font-size: clamp(21px, 4vw, 24px);
+    line-height: 1.3;
+  }
+  .blog-post + .blog-post { margin-top: 74px; }
+  #mobile-footer {
+    display: block;
+    background: var(--left-bg);
+  }
+  #mobile-footer .left-footer {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    margin: 0;
+    padding: 36px 20px;
+  }
+  #mobile-footer .left-h3 {
+    margin: 0 0 var(--pad-sm);
+    font-size: var(--fs-h3);
+  }
+  #mobile-footer .left-block {
+    font-size: var(--fs-body);
+    line-height: 1.34;
+  }
+  #mobile-footer .footer-col + .footer-col {
+    margin-top: 36px;
   }
 }
