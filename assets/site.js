@@ -28,6 +28,14 @@
   // PPPangram's glyphs overhang their line box slightly at this tight tracking.
   // Keep a small optical inset so its visible left/right margins match the panel padding.
   const TITLE_OPTICAL_FIT = 0.975;
+  // The face the title is measured against. Safari resolves document.fonts.ready
+  // without waiting for a face that layout has not requested yet, so the fit has
+  // to ask for this one by name before it can trust its own measurement.
+  const TITLE_FONT_FACE = '700 100px "PPPangram Sans Rounded"';
+  // One pass is enough when text width scales linearly with font size; the extra
+  // passes only correct the browsers where it does not quite.
+  const TITLE_FIT_PASSES = 3;
+  const TITLE_FIT_TOLERANCE = 0.25;
   let activeTitle = null;
   let titleFitQueued = false;
   let structureLinesQueued = false;
@@ -125,18 +133,9 @@
     });
   }
 
-  function fitTitleToPanel() {
-    if (!activeTitle || !activeTitle.isConnected) return;
-
-    // Start from the CSS fallback size on every pass, rather than compounding scale changes.
-    activeTitle.style.removeProperty("font-size");
-    const availableWidth = activeTitle.getBoundingClientRect().width;
-    if (!availableWidth) return;
-    const baseSize = Number.parseFloat(getComputedStyle(activeTitle).fontSize);
-    if (!baseSize) return;
-
-    // A clone lets the browser measure the longest <br>-separated line with the
-    // actual font, kerning, and letter-spacing applied.
+  // A clone lets the browser measure the longest <br>-separated line with the
+  // actual font, kerning, and letter-spacing applied.
+  function measureTitleLine(size) {
     const measure = activeTitle.cloneNode(true);
     measure.removeAttribute("id");
     Object.assign(measure.style, {
@@ -148,15 +147,50 @@
       maxWidth: "none",
       margin: "0",
       whiteSpace: "nowrap",
-      fontSize: `${baseSize}px`
+      fontSize: `${size}px`
     });
     document.body.append(measure);
-    const textWidth = measure.getBoundingClientRect().width;
+    const width = measure.getBoundingClientRect().width;
     measure.remove();
-    if (!textWidth) return;
+    return width;
+  }
 
-    activeTitle.style.fontSize = `${baseSize * ((availableWidth * TITLE_OPTICAL_FIT) / textWidth)}px`;
+  function fitTitleToPanel() {
+    if (!activeTitle || !activeTitle.isConnected) return;
+
+    // Start from the CSS fallback size on every pass, rather than compounding scale changes.
+    activeTitle.style.removeProperty("font-size");
+    const availableWidth = activeTitle.getBoundingClientRect().width;
+    if (!availableWidth) return;
+    const baseSize = Number.parseFloat(getComputedStyle(activeTitle).fontSize);
+    if (!baseSize) return;
+
+    const targetWidth = availableWidth * TITLE_OPTICAL_FIT;
+    let size = baseSize;
+    // Re-measure at the size we are about to apply instead of trusting a single
+    // ratio, so a browser whose text width is not exactly proportional to the
+    // font size still lands inside the panel rather than under the green column.
+    for (let pass = 0; pass < TITLE_FIT_PASSES; pass++) {
+      const textWidth = measureTitleLine(size);
+      if (!textWidth) return;
+      const corrected = size * (targetWidth / textWidth);
+      const settled = Math.abs(corrected - size) <= TITLE_FIT_TOLERANCE;
+      size = corrected;
+      if (settled) break;
+    }
+
+    activeTitle.style.fontSize = `${size}px`;
     scheduleStructureLines();
+  }
+
+  // Resolves once the display face is genuinely usable, not merely once the
+  // browser considers its own pending font work finished.
+  function whenTitleFontReady() {
+    if (!document.fonts) return Promise.resolve();
+    return document.fonts.load(TITLE_FONT_FACE)
+      .catch(() => {})
+      .then(() => document.fonts.ready)
+      .catch(() => {});
   }
 
   function scheduleTitleFit() {
@@ -173,6 +207,8 @@
   } else {
     window.addEventListener("resize", scheduleTitleFit);
   }
+  // The panel never resizes when a face swaps in, so the fit has to be told.
+  document.fonts?.addEventListener?.("loadingdone", scheduleTitleFit);
   rightPanel.addEventListener("scroll", scheduleStructureLines, { passive: true });
   window.addEventListener("resize", scheduleStructureLines);
   window.addEventListener("scroll", scheduleStructureLines, { passive: true });
@@ -346,9 +382,9 @@
     activeTitle = title;
     scheduleTitleFit();
     scheduleStructureLines();
-    // The first pass may use the fallback font; fit once more after EB Garamond
-    // and the display font have both finished loading.
-    document.fonts?.ready.then(scheduleTitleFit);
+    // The first pass may use the fallback font; fit once more after the display
+    // font itself is loaded, then again if any later face swaps in.
+    whenTitleFontReady().then(scheduleTitleFit);
   }
 
   async function loadBlog() {
