@@ -40,6 +40,8 @@
   let titleFitQueued = false;
   let structureLinesQueued = false;
   let structureLineIndex = 0;
+  let structureLineLayout = null;
+  let structureLineLayoutDirty = true;
   let startWindowReveal = () => {};
 
   // A refreshed mobile page should always introduce itself from the logo, not
@@ -68,53 +70,85 @@
     structureLineIndex += 1;
   }
 
-  function renderStructureLines() {
-    if (!discoveryVeil || !structureLines) return;
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
+  function cacheStructureLineLayout(stackedLayout) {
     const rightBounds = rightPanel.getBoundingClientRect();
-    const stackedLayout = window.matchMedia("(max-width: 900px)").matches;
-    const leftDividerEnd = stackedLayout ? viewportWidth : rightBounds.left;
-    const feedDividerStart = stackedLayout ? 0 : rightBounds.left;
-    discoveryVeil.setAttribute("viewBox", `0 0 ${viewportWidth} ${viewportHeight}`);
-    structureLineIndex = 0;
-
-    // On desktop the left panel has a vertical edge. On mobile it is stacked,
-    // so its horizontal dividers instead span the full viewport.
-    if (!stackedLayout) addStructureLine(rightBounds.left, 0, rightBounds.left, viewportHeight);
+    const documentScroll = window.scrollY;
+    const feedScroll = stackedLayout ? documentScroll : rightPanel.scrollTop;
     const title = activeTitle || document.getElementById("site-title");
     const footer = stackedLayout
       ? mobileFooterContainer?.querySelector(".left-footer")
       : infoContainer.querySelector(".left-footer");
-    if (title) {
-      const titleBounds = title.getBoundingClientRect();
-      addStructureLine(0, titleBounds.bottom, leftDividerEnd, titleBounds.bottom);
-    }
-    if (footer) {
-      const footerBounds = footer.getBoundingClientRect();
-      addStructureLine(0, footerBounds.top, leftDividerEnd, footerBounds.top);
-    }
+    const layout = {
+      stacked: stackedLayout,
+      rightLeft: rightBounds.left,
+      titleY: title ? title.getBoundingClientRect().bottom + (stackedLayout ? documentScroll : 0) : null,
+      footerY: footer ? footer.getBoundingClientRect().top + (stackedLayout ? documentScroll : 0) : null,
+      boundaryY: stackedLayout ? rightBounds.top + documentScroll : null,
+      feedYs: []
+    };
 
-    // The feed moves beneath the fixed veil, so its separators use its current
-    // viewport positions and are redrawn as that panel scrolls.
-    blogContainer.querySelectorAll(".right-group").forEach(group => {
+    const groups = [...blogContainer.querySelectorAll(".right-group")];
+    groups.forEach((group, groupIndex) => {
       const heading = group.querySelector(":scope > .right-h3");
       const posts = [...group.querySelectorAll(":scope > .blog-post")];
       if (!posts.length) return;
-
       if (heading) {
         const headingBounds = heading.getBoundingClientRect();
         const firstPostBounds = posts[0].getBoundingClientRect();
-        const dividerY = (headingBounds.bottom + firstPostBounds.top) / 2;
-        addStructureLine(feedDividerStart, dividerY, viewportWidth, dividerY);
+        layout.feedYs.push((headingBounds.bottom + firstPostBounds.top) / 2 + feedScroll);
       }
-
       posts.slice(0, -1).forEach((post, index) => {
         const currentBounds = post.getBoundingClientRect();
         const nextBounds = posts[index + 1].getBoundingClientRect();
-        const dividerY = (currentBounds.bottom + nextBounds.top) / 2;
-        addStructureLine(feedDividerStart, dividerY, viewportWidth, dividerY);
+        layout.feedYs.push((currentBounds.bottom + nextBounds.top) / 2 + feedScroll);
       });
+
+      // Separate the final post in one category from the heading of the next
+      // (for example, the last KOMMANDE post and the TIDIGARE subheader).
+      const nextHeading = groups[groupIndex + 1]?.querySelector(":scope > .right-h3");
+      if (nextHeading) {
+        const lastPostBounds = posts.at(-1).getBoundingClientRect();
+        const nextHeadingBounds = nextHeading.getBoundingClientRect();
+        layout.feedYs.push((lastPostBounds.bottom + nextHeadingBounds.top) / 2 + feedScroll);
+      }
+    });
+    structureLineLayout = layout;
+    structureLineLayoutDirty = false;
+  }
+
+  function renderStructureLines() {
+    if (!discoveryVeil || !structureLines) return;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const stackedLayout = window.matchMedia("(max-width: 900px)").matches;
+    if (structureLineLayoutDirty || !structureLineLayout || structureLineLayout.stacked !== stackedLayout) {
+      cacheStructureLineLayout(stackedLayout);
+    }
+    const layout = structureLineLayout;
+    const documentScroll = window.scrollY;
+    const feedScroll = stackedLayout ? documentScroll : rightPanel.scrollTop;
+    const leftDividerEnd = stackedLayout ? viewportWidth : layout.rightLeft;
+    const feedDividerStart = stackedLayout ? 0 : layout.rightLeft;
+    const fixedY = y => stackedLayout ? y - documentScroll : y;
+    discoveryVeil.setAttribute("viewBox", `0 0 ${viewportWidth} ${viewportHeight}`);
+    structureLineIndex = 0;
+
+    if (!stackedLayout) addStructureLine(layout.rightLeft, 0, layout.rightLeft, viewportHeight);
+    if (layout.titleY !== null) {
+      const y = fixedY(layout.titleY);
+      addStructureLine(0, y, leftDividerEnd, y);
+    }
+    if (layout.footerY !== null) {
+      const y = fixedY(layout.footerY);
+      addStructureLine(0, y, leftDividerEnd, y);
+    }
+    if (stackedLayout && layout.boundaryY !== null) {
+      const y = layout.boundaryY - documentScroll;
+      addStructureLine(0, y, viewportWidth, y);
+    }
+    layout.feedYs.forEach(baseY => {
+      const y = baseY - feedScroll;
+      addStructureLine(feedDividerStart, y, viewportWidth, y);
     });
 
     // Keep the SVG collection in sync with the current number of dividers
@@ -131,6 +165,11 @@
       structureLinesQueued = false;
       renderStructureLines();
     });
+  }
+
+  function invalidateStructureLineLayout() {
+    structureLineLayoutDirty = true;
+    scheduleStructureLines();
   }
 
   // A clone lets the browser measure the longest <br>-separated line with the
@@ -180,7 +219,7 @@
     }
 
     activeTitle.style.fontSize = `${size}px`;
-    scheduleStructureLines();
+    invalidateStructureLineLayout();
   }
 
   // Resolves once the display face is genuinely usable, not merely once the
@@ -204,13 +243,17 @@
 
   if ("ResizeObserver" in window) {
     new ResizeObserver(scheduleTitleFit).observe(leftPanel);
+    const structureLayoutObserver = new ResizeObserver(invalidateStructureLineLayout);
+    structureLayoutObserver.observe(infoContainer);
+    structureLayoutObserver.observe(blogContainer);
+    if (mobileFooterContainer) structureLayoutObserver.observe(mobileFooterContainer);
   } else {
     window.addEventListener("resize", scheduleTitleFit);
   }
   // The panel never resizes when a face swaps in, so the fit has to be told.
   document.fonts?.addEventListener?.("loadingdone", scheduleTitleFit);
   rightPanel.addEventListener("scroll", scheduleStructureLines, { passive: true });
-  window.addEventListener("resize", scheduleStructureLines);
+  window.addEventListener("resize", invalidateStructureLineLayout);
   window.addEventListener("scroll", scheduleStructureLines, { passive: true });
 
   // On the desktop split layout, scrolling anywhere controls the green feed.
@@ -381,7 +424,7 @@
     mobileFooterContainer?.replaceChildren(footer.cloneNode(true));
     activeTitle = title;
     scheduleTitleFit();
-    scheduleStructureLines();
+    invalidateStructureLineLayout();
     // The first pass may use the fallback font; fit once more after the display
     // font itself is loaded, then again if any later face swaps in.
     whenTitleFontReady().then(scheduleTitleFit);
@@ -456,7 +499,11 @@
     }
 
     // A broken pasted link should not leave an empty image frame or credit behind.
-    image.addEventListener("error", () => figure.remove());
+    image.addEventListener("load", invalidateStructureLineLayout, { once: true });
+    image.addEventListener("error", () => {
+      figure.remove();
+      invalidateStructureLineLayout();
+    }, { once: true });
     return figure;
   }
 
@@ -471,7 +518,7 @@
       fragment.append(group);
     });
     blogContainer.replaceChildren(fragment);
-    scheduleStructureLines();
+    invalidateStructureLineLayout();
   }
 
   function renderPost(post) {
@@ -499,7 +546,8 @@
   }
 
   function initializeCircles() {
-    if (!window.firebase) return;
+    const circle = document.getElementById("my-circle");
+    if (!circle) return;
     const config = {
       apiKey: "AIzaSyCkTn4tmo-tzwCR1KuzniDhDTe7R8MNNUo",
       authDomain: "fff1-74e23.firebaseapp.com",
@@ -509,23 +557,10 @@
       messagingSenderId: "24568244243",
       appId: "1:24568243:web:419b04ff26b007756877e6"
     };
-    if (!firebase.apps.length) firebase.initializeApp(config);
-    const db = firebase.database();
-    const circle = document.getElementById("my-circle");
-    const sessionKey = "fff-circle-user-id";
-    const joinedAtKey = "fff-circle-joined-at";
-    let userId = sessionStorage.getItem(sessionKey);
-    if (!userId) {
-      userId = `user_${crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)}`;
-      sessionStorage.setItem(sessionKey, userId);
-    }
-    let joinedAt = Number(sessionStorage.getItem(joinedAtKey));
-    if (!Number.isFinite(joinedAt) || joinedAt <= 0) {
-      joinedAt = Date.now();
-      sessionStorage.setItem(joinedAtKey, String(joinedAt));
-    }
-    const userRef = db.ref(`circles/${userId}`);
-    const circlesRef = db.ref("circles");
+    let userId = null;
+    let userRef = null;
+    let circlesRef = null;
+    const joinedAt = Date.now();
     const otherCircles = new Map();
     let position = { x: .5, y: .5 };
     let dragging = false;
@@ -660,16 +695,22 @@
         viewportY: Math.min(1, Math.max(0, (top + circleHeight / 2) / window.innerHeight))
       };
     };
-    const registerSession = () => userRef.update({
-      ...position,
-      ...sharedViewportPosition(),
-      ...visitorMetadata
-    }).catch(error => console.error("Could not register visitor", error));
-    const writePosition = () => userRef.update({
-      x: position.x,
-      y: position.y,
-      ...sharedViewportPosition()
-    }).catch(error => console.error("Could not update circle", error));
+    const registerSession = () => {
+      if (!userRef) return;
+      userRef.update({
+        ...position,
+        ...sharedViewportPosition(),
+        ...visitorMetadata
+      }).catch(error => console.error("Could not register visitor", error));
+    };
+    const writePosition = () => {
+      if (!userRef) return;
+      userRef.update({
+        x: position.x,
+        y: position.y,
+        ...sharedViewportPosition()
+      }).catch(error => console.error("Could not update circle", error));
+    };
 
     const cancelWindowAnimation = () => {
       if (windowAnimationFrame !== null) cancelAnimationFrame(windowAnimationFrame);
@@ -807,9 +848,16 @@
       windowAnimationFrame = requestAnimationFrame(step);
     }
 
-    const colorForVisitor = id => {
-      const hash = [...id].reduce((total, character) => total + character.charCodeAt(0), 0);
-      return VISITOR_COLORS[hash % VISITOR_COLORS.length];
+    const nextVisitorColor = () => {
+      const usage = new Map(VISITOR_COLORS.map(color => [color, 0]));
+      otherCircles.forEach(other => {
+        if (usage.has(other.color)) usage.set(other.color, usage.get(other.color) + 1);
+      });
+      // Pick the first least-used colour: this walks through the palette before
+      // repeating one, then keeps the distribution as even as possible.
+      return VISITOR_COLORS.reduce((best, color) => (
+        usage.get(color) < usage.get(best) ? color : best
+      ), VISITOR_COLORS[0]);
     };
 
     function placeVisitorCircle(element, visitorPosition, visitor = {}) {
@@ -839,7 +887,7 @@
     }
 
     function createVisitorCircle(id, visitor) {
-      const color = visitor.color || colorForVisitor(id);
+      const color = visitor.color;
       const element = document.createElementNS(SVG_NAMESPACE, "g");
       element.classList.add("visitor-circle");
       const outline = document.createElementNS(SVG_NAMESPACE, "circle");
@@ -891,8 +939,6 @@
     }
 
     placeOwnCircle();
-    registerSession();
-    userRef.onDisconnect().remove();
 
     document.addEventListener("pointerdown", event => {
       if (event.button !== 0 || event.target.closest("a") || !isInsideWindowControl(event.clientX, event.clientY)) return;
@@ -988,18 +1034,19 @@
         x: Math.min(1, Math.max(0, Number(raw.x))),
         y: Math.min(1, Math.max(0, Number(raw.y)))
       };
+      let other = otherCircles.get(snapshot.key);
       const visitor = {
         position: otherPosition,
         viewportX: raw.viewportX,
         viewportY: raw.viewportY,
         joinedAt: raw.joinedAt,
         device: raw.device,
-        timezone: raw.timezone
+        timezone: raw.timezone,
+        color: other?.color || nextVisitorColor()
       };
-      let other = otherCircles.get(snapshot.key);
       if (!other) {
         const element = createVisitorCircle(snapshot.key, visitor);
-        other = { element, position: otherPosition, visitor };
+        other = { element, position: otherPosition, visitor, color: visitor.color };
         otherCircles.set(snapshot.key, other);
       }
       other.position = otherPosition;
@@ -1007,13 +1054,33 @@
       placeVisitorCircle(other.element, otherPosition, visitor);
       updateVisitorDetails(other.element, visitor);
     };
-    circlesRef.on("child_added", addOrUpdateOther);
-    circlesRef.on("child_changed", addOrUpdateOther);
-    circlesRef.on("child_removed", snapshot => {
+    const removeOther = snapshot => {
       const other = otherCircles.get(snapshot.key);
       if (other) other.element.remove();
       otherCircles.delete(snapshot.key);
-    });
+    };
+
+    async function connectPresence() {
+      if (!window.firebase?.auth || !window.firebase?.database) return;
+      try {
+        if (!firebase.apps.length) firebase.initializeApp(config);
+        await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION);
+        const credential = await firebase.auth().signInAnonymously();
+        if (!credential.user) throw new Error("Anonymous sign-in returned no user");
+        userId = credential.user.uid;
+        const db = firebase.database();
+        userRef = db.ref(`circles/${userId}`);
+        circlesRef = db.ref("circles");
+        circlesRef.on("child_added", addOrUpdateOther);
+        circlesRef.on("child_changed", addOrUpdateOther);
+        circlesRef.on("child_removed", removeOther);
+        registerSession();
+        userRef.onDisconnect().remove();
+      } catch (error) {
+        console.error("Could not start a secure visitor session", error);
+      }
+    }
+    connectPresence();
 
     window.setInterval(() => {
       otherCircles.forEach(other => updateVisitorDetails(other.element, other.visitor));
